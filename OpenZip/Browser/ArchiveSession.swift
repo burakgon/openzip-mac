@@ -779,6 +779,18 @@ final class ArchiveSession: Identifiable {
         }
     }
 
+    // MARK: Reporting
+
+    /// Writes the list of what is in the archive to a file.
+    func writeReport(to file: URL, as format: ArchiveReport.Format) {
+        do {
+            try ArchiveReport.make(of: listing, named: title, as: format).write(to: file, atomically: true, encoding: .utf8)
+            notice = Notice(kind: .success, text: "The list of \(Formatting.count(listing.entries.count, "item")) is in “\(file.lastPathComponent)”", reveal: [file])
+        } catch {
+            report(error)
+        }
+    }
+
     // MARK: Running operations
 
     /// Runs an operation as the window's activity, and asks for the password when the

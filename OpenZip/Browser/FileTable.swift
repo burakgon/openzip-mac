@@ -755,8 +755,9 @@ final class TextCell: NSTableCellView {
 
 /// A menu item that runs a closure.
 enum ActionMenuItem {
-    /// What an item calls when it is chosen. The item keeps it alive as its represented object.
-    private final class Handler: NSObject {
+    /// What an item calls when it is chosen. The item keeps it alive as its represented
+    /// object; a control that uses one has to be kept company by whoever made it.
+    final class Target: NSObject {
         let action: () -> Void
 
         init(_ action: @escaping () -> Void) {
@@ -769,8 +770,8 @@ enum ActionMenuItem {
     }
 
     static func make(title: String, symbol: String, action: @escaping () -> Void) -> NSMenuItem {
-        let handler = Handler(action)
-        let item = NSMenuItem(title: title, action: #selector(Handler.run), keyEquivalent: "")
+        let handler = Target(action)
+        let item = NSMenuItem(title: title, action: #selector(Target.run), keyEquivalent: "")
         item.target = handler
         item.representedObject = handler
         item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
@@ -795,6 +796,33 @@ final class ColumnsMenuDelegate: NSObject, NSMenuDelegate {
 
 /// What several parts of a window do in the same way.
 enum BrowserActions {
+    /// Asks where to keep the list of what is in the archive, and as what, and writes it.
+    static func exportList(of session: ArchiveSession) {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = FileNaming.archiveBaseName(session.title) + " files.csv"
+        panel.message = "A list of everything in “\(session.title)”: a table for a spreadsheet, or a text to read."
+        panel.prompt = "Export"
+        panel.canCreateDirectories = true
+
+        let formats = NSPopUpButton(frame: .zero, pullsDown: false)
+        formats.addItems(withTitles: ["Table for a spreadsheet (CSV)", "List to read (text)"])
+        let label = NSTextField(labelWithString: "Format:")
+        let row = NSStackView(views: [label, formats])
+        row.edgeInsets = NSEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)
+        panel.accessoryView = row
+        // The name follows the format that is chosen.
+        let follow = ActionMenuItem.Target { [weak panel, weak formats] in
+            guard let panel, let formats else { return }
+            let ext = formats.indexOfSelectedItem == 0 ? "csv" : "txt"
+            panel.nameFieldStringValue = (panel.nameFieldStringValue as NSString).deletingPathExtension + "." + ext
+        }
+        formats.target = follow
+        formats.action = #selector(ActionMenuItem.Target.run)
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        session.writeReport(to: url, as: formats.indexOfSelectedItem == 0 ? .csv : .text)
+    }
+
     /// Asks for files and adds them to the folder the window shows.
     static func chooseFilesToAdd(to session: ArchiveSession, withOptions: Bool = false) {
         let panel = NSOpenPanel()

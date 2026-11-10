@@ -263,3 +263,51 @@ struct RarPackagesTests {
         #expect(RarPackages.version(from: 1005) == "10.05")
     }
 }
+
+@Suite("The report of what is in an archive")
+struct ArchiveReportTests {
+    private var listing: ArchiveListing {
+        let time = Date(timeIntervalSince1970: 1_800_000_000)   // 2027-01-15 08:00:00 UTC
+        var info = ArchiveInfo()
+        info.type = "zip"
+        info.physicalSize = 2_048
+        return ArchiveListing(info: info, entries: [
+            ArchiveEntry(path: "notes/read me, \"first\".txt", size: 1_200, packedSize: 400, modified: time, crc: 0x00AB_CDEF, isEncrypted: true, method: "Deflate", permissions: "-rw-r--r--"),
+            ArchiveEntry(path: "notes", isDirectory: true, modified: time),
+            ArchiveEntry(path: "latest", size: 5, modified: time, linkTarget: "notes", isSymbolicLink: true),
+            ArchiveEntry(path: "a.bin", size: 4_000, modified: nil, method: "Store"),
+        ])
+    }
+
+    @Test func writesATableForASpreadsheet() {
+        let report = ArchiveReport.make(of: listing, named: "Kit.zip", as: .csv, timeZone: TimeZone(identifier: "UTC")!)
+        #expect(report == [
+            "Path,Kind,Size,Packed,Modified,CRC32,Method,Encrypted,Permissions,Link",
+            "a.bin,file,4000,,,,Store,,,",
+            "latest,link,5,,2027-01-15 08:00:00,,,,,notes",
+            "notes,folder,,,2027-01-15 08:00:00,,,,,",
+            "\"notes/read me, \"\"first\"\".txt\",file,1200,400,2027-01-15 08:00:00,00ABCDEF,Deflate,yes,-rw-r--r--,",
+            "",
+        ].joined(separator: "\r\n"))
+    }
+
+    @Test func writesAListToRead() {
+        let report = ArchiveReport.make(of: listing, named: "Kit.zip", as: .text, timeZone: TimeZone(identifier: "Europe/Istanbul")!)
+        #expect(report == """
+            Kit.zip
+            ZIP, 3 files, 1 folder, 5205 bytes in 2048
+
+            Modified                  Size        Packed  Name
+                                      4000                a.bin
+            2027-01-15 11:00             5                latest -> notes
+            2027-01-15 11:00                              notes/
+            2027-01-15 11:00          1200           400  notes/read me, "first".txt
+
+            """)
+    }
+
+    @Test func anEmptyArchiveStillHasItsHeader() {
+        #expect(ArchiveReport.make(of: ArchiveListing(), named: "e.7z", as: .csv) == "Path,Kind,Size,Packed,Modified,CRC32,Method,Encrypted,Permissions,Link\r\n")
+        #expect(ArchiveReport.make(of: ArchiveListing(), named: "e.7z", as: .text).hasPrefix("e.7z\nArchive, 0 files, 0 bytes\n"))
+    }
+}

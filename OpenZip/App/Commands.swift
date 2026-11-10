@@ -125,6 +125,10 @@ struct AppCommands: Commands {
                 if let session { AppModel.shared.convert(session.url, password: session.knownPassword) }
             }
             .disabled(session?.isReady != true)
+            Button("Export File List…") {
+                if let session { BrowserActions.exportList(of: session) }
+            }
+            .disabled(session?.isReady != true)
             Divider()
             // What only RAR has.
             Button("Add Recovery Record…") { session?.sheet = .recoveryRecord }
