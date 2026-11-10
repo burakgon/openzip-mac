@@ -11,6 +11,7 @@ struct SettingsView: View {
             Tab("General", systemImage: "gearshape", value: "general") { GeneralPane() }
             Tab("Extracting", systemImage: "square.and.arrow.down", value: "extracting") { ExtractingPane() }
             Tab("Finder", systemImage: "macwindow.on.rectangle", value: "finder") { FinderPane() }
+            Tab("Passwords", systemImage: "key", value: "passwords") { PasswordsPane() }
             Tab("RAR", systemImage: "books.vertical", value: "rar") { RarPane() }
             Tab("About", systemImage: "info.circle", value: "about") { AboutPane() }
         }
@@ -190,6 +191,138 @@ private struct FinderPane: View {
             }
             refresh()
         }
+    }
+}
+
+// MARK: Passwords
+
+private struct PasswordsPane: View {
+    @State private var entries: [PasswordVault.Entry] = []
+    @State private var isAdding = false
+    @State private var isForgettingAll = false
+
+    /// As many as are shown without scrolling: the pane is as tall as what is in it, and
+    /// a long list would make it taller than the screen.
+    private static let mostRows = 7
+    private static let rowHeight: CGFloat = 44
+
+    var body: some View {
+        Form {
+            Section {
+                if entries.isEmpty {
+                    Text("None yet. A password is remembered when you say so where you type it.")
+                        .foregroundStyle(.secondary)
+                } else if entries.count <= Self.mostRows {
+                    ForEach(entries) { row(for: $0) }
+                } else {
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            ForEach(entries) { entry in
+                                row(for: entry)
+                                    .frame(height: Self.rowHeight)
+                                Divider()
+                            }
+                        }
+                    }
+                    .frame(height: CGFloat(Self.mostRows) * Self.rowHeight)
+                }
+            } header: {
+                Text("Remembered passwords")
+            } footer: {
+                Text("When an archive asks for a password, OpenZip tries these before it asks you, and a new archive can be given one of them. They are in your keychain: Keychain Access shows them as “OpenZip Archive Passwords”.")
+            }
+
+            Section {
+                Button("Remember a Password…") { isAdding = true }
+                Button("Forget All of Them…", role: .destructive) { isForgettingAll = true }
+                    .disabled(entries.isEmpty)
+            }
+        }
+        .pane()
+        .onAppear(perform: refresh)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in refresh() }
+        .sheet(isPresented: $isAdding, onDismiss: refresh) { RememberPasswordSheet() }
+        .confirmationDialog("Forget the \(Formatting.count(entries.count, "password")) OpenZip remembers?", isPresented: $isForgettingAll) {
+            Button("Forget", role: .destructive) {
+                PasswordVault.removeAll()
+                refresh()
+            }
+        } message: {
+            Text("The archives they open stay as they are: you will be asked for their passwords again.")
+        }
+    }
+
+    private func row(for entry: PasswordVault.Entry) -> some View {
+        LabeledContent {
+            Button("Forget", systemImage: "minus.circle") {
+                PasswordVault.remove(entry)
+                refresh()
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+            .help("Forget this password")
+        } label: {
+            Text(entry.label)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Text("Remembered \(Formatting.date(entry.saved))")
+        }
+    }
+
+    private func refresh() {
+        entries = PasswordVault.entries()
+    }
+}
+
+/// Asks for a password to remember, and for what to call it.
+private struct RememberPasswordSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var label = ""
+    @State private var password = ""
+    @State private var isVisible = false
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Remember a Password")
+                .font(.headline)
+            TextField("What it is for", text: $label)
+                .textFieldStyle(.roundedBorder)
+                .focused($isFocused)
+            HStack {
+                Group {
+                    if isVisible {
+                        TextField("Password", text: $password)
+                    } else {
+                        SecureField("Password", text: $password)
+                    }
+                }
+                .textFieldStyle(.roundedBorder)
+                .onSubmit(save)
+                Button(isVisible ? "Hide" : "Show", systemImage: isVisible ? "eye.slash" : "eye") { isVisible.toggle() }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.borderless)
+                    .help(isVisible ? "Hide the password" : "Show the password")
+            }
+            HStack {
+                Spacer()
+                Button("Cancel", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button("Remember", action: save)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(password.isEmpty)
+            }
+        }
+        .padding(20)
+        .frame(width: 380)
+        .onAppear { isFocused = true }
+    }
+
+    private func save() {
+        guard !password.isEmpty else { return }
+        let name = label.trimmingCharacters(in: .whitespaces)
+        PasswordVault.save(password, label: name.isEmpty ? "Password" : name)
+        dismiss()
     }
 }
 

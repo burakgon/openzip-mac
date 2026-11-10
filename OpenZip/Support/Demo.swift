@@ -28,9 +28,25 @@ enum Demo {
         isEnabled ? values("--recent").map { URL(filePath: ($0 as NSString).expandingTildeInPath) } : []
     }
 
+    /// The password the demo gives to the first question for one: --answer-password secret.
+    /// Only the first: an answer that is wrong would otherwise be given forever.
+    static func passwordAnswer() -> String? {
+        guard isEnabled, !hasAnsweredPassword, let answer = value("--answer-password") else { return nil }
+        hasAnsweredPassword = true
+        return answer
+    }
+
+    private static var hasAnsweredPassword = false
+
     /// What to do once the app runs.
     static func launch() {
         guard isEnabled else { return }
+        // Passwords for the keychain of the demo: --vault-clear --vault-add "Label=secret".
+        if arguments.contains("--vault-clear") { PasswordVault.removeAll() }
+        for pair in values("--vault-add") {
+            let parts = pair.split(separator: "=", maxSplits: 1).map(String.init)
+            if parts.count == 2 { PasswordVault.save(parts[1], label: parts[0]) }
+        }
         if arguments.contains("--clear-recents") {
             NSDocumentController.shared.clearRecentDocuments(nil)
         }
@@ -161,6 +177,8 @@ enum Demo {
                 let responder = NSApp.keyWindow?.firstResponder.map { String(describing: type(of: $0)) } ?? "none"
                 print("SENT \(argument): \(handled ? "taken" : "not taken"), the focus is on \(responder) in \(NSApp.keyWindow?.title ?? "no key window")")
                 try? await Task.sleep(for: .seconds(0.2))
+            case "vault":
+                print("VAULT: \(PasswordVault.entries().map(\.label).joined(separator: "|"))")
             case "clipboard":
                 // What is on the clipboard: its files, and what it pastes as text.
                 print("CLIPBOARD FILES: \(FileClipboard.files.map(\.path).joined(separator: "|"))")

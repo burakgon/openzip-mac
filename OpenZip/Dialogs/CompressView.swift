@@ -12,6 +12,8 @@ final class CompressModel {
     var options: CompressionOptions
     var password = ""
     var verification = ""
+    /// Whether the password goes into the keychain when the archive is created.
+    var remembersPassword = false
     var showsPassword = false
     var separate = false
     var trashOriginals = false
@@ -153,6 +155,7 @@ final class CompressModel {
             separate: separate, trashOriginals: trashOriginals, testAfterwards: testAfterwards,
             converting: converting, convertingPassword: convertingPassword
         )
+        if remembersPassword, !password.isEmpty { PasswordVault.save(password, label: archive.lastPathComponent) }
         CompressRunner.start(plan)
     }
 }
@@ -201,8 +204,8 @@ struct CompressView: View {
             }
         }
         .onAppear {
-            // The demo can press Create itself: --to 7z --auto.
-            guard let model, Demo.isEnabled, Demo.arguments.contains("--auto") else { return }
+            // The demo can fill in the form and press Create itself: --to 7z --new-password secret --auto.
+            guard let model, Demo.isEnabled else { return }
             if let format = Demo.value("--to").flatMap(ArchiveFormat.init(rawValue:)) {
                 model.options.format = format
                 model.fit()
@@ -210,7 +213,9 @@ struct CompressView: View {
             if let password = Demo.value("--new-password") {
                 model.password = password
                 model.verification = password
+                model.remembersPassword = Demo.arguments.contains("--remember")
             }
+            guard Demo.arguments.contains("--auto") else { return }
             model.start()
             dismiss()
         }
@@ -224,6 +229,8 @@ private struct CompressForm: View {
     @Bindable var model: CompressModel
     let close: () -> Void
     @State private var showsAdvanced = Demo.arguments.contains("--more")
+    /// The passwords in the keychain, to pick one from.
+    @State private var remembered: [PasswordVault.Entry] = []
     @State private var savingProfile = false
     @State private var profileName = ""
 
@@ -432,6 +439,23 @@ private struct CompressForm: View {
                     }
                     .labelsHidden()
                     .multilineTextAlignment(.trailing)
+                    if !remembered.isEmpty {
+                        Menu {
+                            ForEach(remembered) { entry in
+                                Button(entry.label) {
+                                    guard let password = PasswordVault.password(of: entry) else { return }
+                                    model.password = password
+                                    model.verification = password
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "key")
+                        }
+                        .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
+                        .fixedSize()
+                        .help("Use a password that is remembered in the keychain")
+                    }
                     Button(model.showsPassword ? "Hide" : "Show", systemImage: model.showsPassword ? "eye.slash" : "eye") {
                         model.showsPassword.toggle()
                     }
@@ -439,6 +463,7 @@ private struct CompressForm: View {
                     .buttonStyle(.borderless)
                 }
             }
+            .onAppear { remembered = PasswordVault.entries() }
             if !model.password.isEmpty {
                 if !model.showsPassword {
                     LabeledContent("Again") {
@@ -457,6 +482,8 @@ private struct CompressForm: View {
                     }
                     .help("AES-256 is strong and is opened by 7-Zip, WinRAR, WinZip and OpenZip. ZipCrypto opens everywhere, including Windows Explorer, and protects very little.")
                 }
+                Toggle("Remember this password in my keychain", isOn: $model.remembersPassword)
+                    .help("OpenZip then opens the archive without asking. Settings → Passwords shows what is remembered.")
             }
         } footer: {
             if !model.password.isEmpty {

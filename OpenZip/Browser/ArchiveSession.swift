@@ -143,6 +143,10 @@ final class ArchiveSession: Identifiable {
     @ObservationIgnored private var back: [String] = []
     @ObservationIgnored private var forward: [String] = []
     @ObservationIgnored private var password: String?
+    /// The password the user typed last, to tell it from one that was only tried.
+    @ObservationIgnored private var typedPassword: String?
+    /// Whether the password that was typed goes into the keychain once it has opened the archive.
+    @ObservationIgnored private var remembersPassword = false
     @ObservationIgnored private var extracted: [String: URL] = [:]
     @ObservationIgnored private var edited: [EditedFile] = []
     @ObservationIgnored private var previewNode: Int?
@@ -800,17 +804,32 @@ final class ArchiveSession: Identifiable {
             if !progress.currentItem.isEmpty { activity.item = progress.currentItem }
         }
         let engine = app.engine
+        // Before anyone is asked, the passwords in the keychain are tried.
+        var remembered = PasswordVault.Attempts()
         while true {
             do {
                 let result = try await work(engine, password, activity.control, sink.handler)
                 app.remember(password, for: url)
+                if remembersPassword, let password, password == typedPassword {
+                    remembersPassword = false
+                    PasswordVault.save(password, label: self.title)
+                }
                 return result
             } catch ArchiveError.passwordRequired {
-                guard let entered = await askPassword(wrong: false) else { throw ArchiveError.cancelled }
-                password = entered
+                if let next = remembered.next(after: password) {
+                    password = next
+                } else {
+                    guard let entered = await askPassword(wrong: false) else { throw ArchiveError.cancelled }
+                    password = entered
+                }
             } catch ArchiveError.wrongPassword {
-                guard let entered = await askPassword(wrong: password != nil) else { throw ArchiveError.cancelled }
-                password = entered
+                if let next = remembered.next(after: password) {
+                    password = next
+                } else {
+                    // "Not correct" is only said of a password that was typed.
+                    guard let entered = await askPassword(wrong: password != nil && password == typedPassword) else { throw ArchiveError.cancelled }
+                    password = entered
+                }
             }
         }
     }
@@ -829,15 +848,25 @@ final class ArchiveSession: Identifiable {
     // MARK: Questions
 
     private func askPassword(wrong: Bool) async -> String? {
-        await withCheckedContinuation { continuation in
+        // The demo can answer by itself, once: --answer-password secret --remember.
+        if let answer = Demo.passwordAnswer() {
+            typedPassword = answer
+            remembersPassword = Demo.arguments.contains("--remember")
+            return answer
+        }
+        return await withCheckedContinuation { continuation in
             passwordContinuation = continuation
             passwordPrompt = PasswordPrompt(isWrong: wrong)
         }
     }
 
     /// Answers the question for the password. nil gives up. Safe to call when nothing is asked.
-    func answerPassword(_ password: String?) {
+    func answerPassword(_ password: String?, remember: Bool = false) {
         passwordPrompt = nil
+        if let password {
+            typedPassword = password
+            remembersPassword = remember
+        }
         let continuation = passwordContinuation
         passwordContinuation = nil
         continuation?.resume(returning: password)

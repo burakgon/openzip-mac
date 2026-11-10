@@ -178,17 +178,27 @@ enum QuickActions {
     static func withPassword<Result>(for archive: URL, _ work: (String?) async throws -> Result) async throws -> Result {
         let app = AppModel.shared
         var password = app.password(for: archive)
+        // Before anyone is asked, the passwords in the keychain are tried.
+        var remembered = PasswordVault.Attempts()
+        var typed: String?
+        var remembers = false
         while true {
             do {
                 let result = try await work(password)
                 app.remember(password, for: archive)
+                if remembers, let password, password == typed { PasswordVault.save(password, label: archive.lastPathComponent) }
                 return result
-            } catch ArchiveError.passwordRequired {
-                guard let entered = PasswordAlert.ask(for: archive.lastPathComponent, wrong: false) else { throw ArchiveError.cancelled }
-                password = entered
-            } catch ArchiveError.wrongPassword {
-                guard let entered = PasswordAlert.ask(for: archive.lastPathComponent, wrong: password != nil) else { throw ArchiveError.cancelled }
-                password = entered
+            } catch let error as ArchiveError where error == .passwordRequired || error == .wrongPassword {
+                if let next = remembered.next(after: password) {
+                    password = next
+                    continue
+                }
+                // "Not correct" is only said of a password that was typed.
+                let wrong = error == .wrongPassword && password != nil && password == typed
+                guard let entered = PasswordAlert.ask(for: archive.lastPathComponent, wrong: wrong) else { throw ArchiveError.cancelled }
+                password = entered.password
+                typed = entered.password
+                remembers = entered.remembers
             }
         }
     }
@@ -196,20 +206,27 @@ enum QuickActions {
 
 /// The question for a password, when there is no window to ask it in.
 enum PasswordAlert {
-    static func ask(for archive: String, wrong: Bool) -> String? {
+    static func ask(for archive: String, wrong: Bool) -> (password: String, remembers: Bool)? {
+        // The demo can answer by itself, once: --answer-password secret --remember.
+        if let answer = Demo.passwordAnswer() { return (answer, Demo.arguments.contains("--remember")) }
         let alert = NSAlert()
         alert.messageText = "“\(archive)” is protected with a password"
         alert.informativeText = wrong ? "That password is not correct. Try again." : "Enter the password to go on."
         alert.icon = NSImage(systemSymbolName: "lock.fill", accessibilityDescription: nil)
-        let field = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
+        let field = NSSecureTextField(frame: NSRect(x: 0, y: 26, width: 260, height: 24))
         field.placeholderString = "Password"
-        alert.accessoryView = field
+        let remember = NSButton(checkboxWithTitle: "Remember in my keychain", target: nil, action: nil)
+        remember.frame = NSRect(x: 0, y: 0, width: 260, height: 18)
+        let accessory = NSView(frame: NSRect(x: 0, y: 0, width: 260, height: 50))
+        accessory.addSubview(field)
+        accessory.addSubview(remember)
+        alert.accessoryView = accessory
         alert.addButton(withTitle: "OK")
         alert.addButton(withTitle: "Cancel")
         alert.window.initialFirstResponder = field
         NSApp.activate()
         guard alert.runModal() == .alertFirstButtonReturn, !field.stringValue.isEmpty else { return nil }
-        return field.stringValue
+        return (field.stringValue, remember.state == .on)
     }
 }
 

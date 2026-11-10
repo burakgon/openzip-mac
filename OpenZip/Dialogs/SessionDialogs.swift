@@ -25,7 +25,7 @@ struct SessionDialogs: ViewModifier {
             }
             // Dismissing with Escape must answer the operation that is waiting, too.
             .sheet(item: $session.passwordPrompt, onDismiss: { session.answerPassword(nil) }) { prompt in
-                PasswordSheet(archive: session.title, isWrong: prompt.isWrong) { session.answerPassword($0) }
+                PasswordSheet(archive: session.title, isWrong: prompt.isWrong) { session.answerPassword($0, remember: $1) }
             }
             .sheet(item: $session.conflictPrompt, onDismiss: { session.answerConflict(ConflictDecision(.stop)) }) { prompt in
                 ConflictSheet(conflict: prompt.conflict) { session.answerConflict($0) }
@@ -72,9 +72,11 @@ struct SessionDialogs: ViewModifier {
 struct PasswordSheet: View {
     let archive: String
     let isWrong: Bool
-    let answer: (String?) -> Void
+    /// The password, or nil to give up, and whether to keep it in the keychain.
+    let answer: (String?, Bool) -> Void
     @State private var password = ""
     @State private var isVisible = false
+    @State private var remembers = false
     @FocusState private var isFocused: Bool
 
     var body: some View {
@@ -108,9 +110,11 @@ struct PasswordSheet: View {
                     .buttonStyle(.borderless)
                     .help(isVisible ? "Hide the password" : "Show the password")
             }
+            Toggle("Remember this password in my keychain", isOn: $remembers)
+                .help("OpenZip then tries it by itself on archives that ask for a password. Settings → Passwords shows what is remembered.")
             HStack {
                 Spacer()
-                Button("Cancel", role: .cancel) { answer(nil) }
+                Button("Cancel", role: .cancel) { answer(nil, false) }
                     .keyboardShortcut(.cancelAction)
                 Button("Open", action: submit)
                     .keyboardShortcut(.defaultAction)
@@ -124,7 +128,7 @@ struct PasswordSheet: View {
 
     private func submit() {
         guard !password.isEmpty else { return }
-        answer(password)
+        answer(password, remembers)
     }
 }
 
