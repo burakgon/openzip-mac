@@ -17,15 +17,30 @@ if ! xcodebuild -version > /dev/null 2>&1 && [[ -d /Applications/Xcode.app ]]; t
 fi
 
 APP=${APP:-build/DerivedData/Build/Products/Release/OpenZip.app}
-BINARY="$APP/Contents/MacOS/OpenZip"
 OUT=docs/images
-[[ -x "$BINARY" ]] || { echo "!! build the app first: $APP is missing" >&2; exit 1; }
+[[ -x "$APP/Contents/MacOS/OpenZip" ]] || { echo "!! build the app first: $APP is missing" >&2; exit 1; }
 # As a full path: the app is started and its helper used from other folders.
-APP=$(cd "$(dirname "$APP")" && pwd)/$(basename "$APP")
+APP=$(cd "$(dirname "$APP")" && pwd -P)/$(basename "$APP")
+BINARY="$APP/Contents/MacOS/OpenZip"
 mkdir -p "$OUT"
 
+# The copies of the app that were started from here, and no others: the OpenZip of
+# whoever takes the pictures may well be open, with work in it, and is left alone.
+ours() {
+    local pid
+    for pid in $(pgrep -x OpenZip); do
+        [[ "$(ps -o comm= -p "$pid" 2> /dev/null)" == "$BINARY" ]] && echo "$pid"
+    done
+    return 0
+}
+stop() {
+    local pids
+    pids=$(ours)
+    [[ -z "$pids" ]] || kill $pids 2> /dev/null || true
+}
+
 STAGE=$(mktemp -d)
-trap 'pkill -x OpenZip 2> /dev/null || true; rm -rf "$STAGE"' EXIT
+trap 'stop; rm -rf "$STAGE"' EXIT
 
 # --- The archive in the pictures ---------------------------------------------------
 
@@ -65,23 +80,25 @@ mkdir -p "$STAGE/Existing/Aurora Brand Kit" && echo "mine" > "$STAGE/Existing/Au
 
 # --- Taking them -------------------------------------------------------------------
 
-# The windows of the app that are on screen: "id<TAB>width<TAB>title", front to back.
-# Before listing them the app is brought to the front, so that its window is drawn the
-# way a window in use is. That takes the Accessibility permission; without it the pictures
-# are taken all the same, of a window that may look inactive.
+# The windows that the copy of the app with the given process identifier has on screen:
+# "id<TAB>width<TAB>title", front to back. Before listing them the app is brought to the
+# front, so that its window is drawn the way a window in use is. That takes the
+# Accessibility permission; without it the pictures are taken all the same, of a window
+# that may look inactive.
 windows() {
-    swift - <<'SWIFT'
+    OPENZIP_PID=$1 swift - <<'SWIFT'
 import AppKit
 import ApplicationServices
 import CoreGraphics
 import Foundation
-if let app = NSWorkspace.shared.runningApplications.first(where: { $0.localizedName == "OpenZip" }) {
-    AXUIElementSetAttributeValue(AXUIElementCreateApplication(app.processIdentifier), kAXFrontmostAttribute as CFString, kCFBooleanTrue)
+let pid = pid_t(ProcessInfo.processInfo.environment["OPENZIP_PID"] ?? "") ?? 0
+if let app = NSRunningApplication(processIdentifier: pid) {
+    AXUIElementSetAttributeValue(AXUIElementCreateApplication(pid), kAXFrontmostAttribute as CFString, kCFBooleanTrue)
     app.activate(options: [.activateAllWindows])
     Thread.sleep(forTimeInterval: 0.8)
 }
 let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
-for window in list where (window[kCGWindowOwnerName as String] as? String) == "OpenZip" && (window[kCGWindowLayer as String] as? Int) == 0 {
+for window in list where (window[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value == pid && (window[kCGWindowLayer as String] as? Int) == 0 {
     let bounds = window[kCGWindowBounds as String] as? [String: Any] ?? [:]
     print("\(window[kCGWindowNumber as String] as? Int ?? 0)\t\(bounds["Width"] as? Int ?? 0)\t\(window[kCGWindowName as String] as? String ?? "")")
 }
@@ -94,17 +111,19 @@ SWIFT
 shot() {
     local name=$1 seconds=$2 which=$3
     shift 3
-    pkill -x OpenZip 2> /dev/null || true
+    stop
     sleep 0.4
     # The pictures are for everybody: numbers and dates as the United States writes them,
     # whatever the Mac that takes them is set to.
     open -n -a "$APP" --args --demo --locale en_US -ApplePersistenceIgnoreState YES "$@"
     sleep "$seconds"
-    local id
+    local pid id
+    pid=$(ours | head -1)
+    [[ -n "$pid" ]] || { echo "!! the app did not start for $name" >&2; return 1; }
     if [[ $which == main ]]; then
-        id=$(windows | sort -t$'\t' -k2 -n -r | head -1 | cut -f1)
+        id=$(windows "$pid" | sort -t$'\t' -k2 -n -r | head -1 | cut -f1)
     else
-        id=$(windows | head -1 | cut -f1)
+        id=$(windows "$pid" | head -1 | cut -f1)
     fi
     [[ -n "$id" ]] || { echo "!! no window for $name" >&2; return 1; }
     screencapture -x -l "$id" "$OUT/$name.png"
