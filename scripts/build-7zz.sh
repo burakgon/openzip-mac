@@ -1,32 +1,58 @@
 #!/bin/bash
 # Builds 7zz, the 7-Zip console program that does OpenZip's reading and writing, from the
-# source that 7-Zip publishes, as a universal binary in Vendor/7zz.
+# source that 7-Zip publishes, as a universal binary in Vendor/7zz. Next to it goes 7z.sfx,
+# the small Windows program that 7-Zip puts in front of an archive to make it extract
+# itself: that one is taken as it is from 7-Zip's package for Windows, a Mac having no way
+# to build it.
 #
 #   scripts/build-7zz.sh           build it unless Vendor/7zz is already this version
 #   scripts/build-7zz.sh --force   build it again
 #
 # The Xcode project runs this before the first build, so there is normally no reason to run
-# it by hand. The source archive is pinned by its SHA-256: to move to a new 7-Zip, change
-# VERSION and SHA256 below.
+# it by hand. Both downloads are pinned by their SHA-256: to move to a new 7-Zip, change
+# VERSION and the two sums below.
 #
-# Nothing of 7-Zip is kept in this repository. The archive comes from the releases of
+# Nothing of 7-Zip is kept in this repository. The files come from the releases of
 # https://github.com/ip7z/7zip, 7-Zip's own repository.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 VERSION=26.06
 SHA256=a4e374c8f864f51df48c2cfd0e1413ec3b2ea030deae852d6a655402ebb61ac4
+# Of 7-Zip's package for 32-bit Windows. Its 7z.sfx runs on every Windows there is.
+WINDOWS_SHA256=5e38f80c3752de43887e7a99ad10668c14bf64dcc929a636510b54616ea7dec7
 # The oldest macOS the helper runs on: the same as the app's (Config/Base.xcconfig).
 DEPLOYMENT_TARGET=26.0
 
 NAME="7z${VERSION//./}-src"
 URL="https://github.com/ip7z/7zip/releases/download/$VERSION/$NAME.tar.xz"
+WINDOWS_NAME="7z${VERSION//./}.exe"
+WINDOWS_URL="https://github.com/ip7z/7zip/releases/download/$VERSION/$WINDOWS_NAME"
 OUT=Vendor/7zz
 WORK=build/7zz
 
 fail() { echo "error: $*" >&2; exit 1; }
 
+# Takes 7z.sfx out of 7-Zip's package for Windows, which is a 7z archive that 7zz reads.
+fetch_sfx() {
+    mkdir -p "$WORK" "$OUT"
+    local package="$WORK/$WINDOWS_NAME"
+    if [[ ! -f "$package" ]] || ! echo "$WINDOWS_SHA256  $package" | shasum -a 256 -c - > /dev/null 2>&1; then
+        curl --fail --location --silent --show-error --retry 3 -o "$package" "$WINDOWS_URL" \
+            || fail "could not download $WINDOWS_URL"
+    fi
+    echo "$WINDOWS_SHA256  $package" | shasum -a 256 -c - > /dev/null \
+        || fail "$package does not have the expected SHA-256: it is not the package this script was written for"
+    rm -rf "$WORK/sfx"
+    "$OUT/7zz" e -y -bso0 -bsp0 -o"$WORK/sfx" "$package" 7z.sfx || fail "7z.sfx is not in $package"
+    # A file to read, not a program for this Mac.
+    install -m 644 "$WORK/sfx/7z.sfx" "$OUT/7z.sfx"
+    rm -rf "$WORK/sfx"
+}
+
 if [[ "${1:-}" != "--force" && -x "$OUT/7zz" && "$(cat "$OUT/VERSION" 2>/dev/null)" == "$VERSION" ]]; then
+    # A copy that was built before 7z.sfx was part of this only lacks that.
+    [[ -f "$OUT/7z.sfx" ]] || { echo "==> Fetching 7z.sfx of 7-Zip $VERSION"; fetch_sfx; }
     exit 0
 fi
 
@@ -78,6 +104,7 @@ mv -f "$OUT/7zz.new" "$OUT/7zz"
 install -m 644 "$WORK/src/DOC/License.txt" "$OUT/7-Zip License.txt"
 install -m 644 "$WORK/src/DOC/unRarLicense.txt" "$OUT/7-Zip unRAR License.txt"
 install -m 644 "$WORK/src/DOC/copying.txt" "$OUT/7-Zip LGPL.txt"
+fetch_sfx
 printf '%s\n' "$VERSION" > "$OUT/VERSION"
 rm -rf "$WORK/src" "$WORK/out"
-echo "==> $OUT/7zz ($(lipo -archs "$OUT/7zz"))"
+echo "==> $OUT/7zz ($(lipo -archs "$OUT/7zz")), $OUT/7z.sfx"

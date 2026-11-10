@@ -14,6 +14,7 @@
 		0Z0000000000000000000B05 /* 7-Zip License.txt in Resources */ = {isa = PBXBuildFile; fileRef = 0Z0000000000000000000F13 /* 7-Zip License.txt */; };
 		0Z0000000000000000000B06 /* 7-Zip unRAR License.txt in Resources */ = {isa = PBXBuildFile; fileRef = 0Z0000000000000000000F14 /* 7-Zip unRAR License.txt */; };
 		0Z0000000000000000000B07 /* 7-Zip LGPL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 0Z0000000000000000000F15 /* 7-Zip LGPL.txt */; };
+		0Z0000000000000000000B08 /* 7z.sfx in Resources */ = {isa = PBXBuildFile; fileRef = 0Z0000000000000000000F16 /* 7z.sfx */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -67,6 +68,7 @@
 		0Z0000000000000000000F13 /* 7-Zip License.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "7-Zip License.txt"; sourceTree = "<group>"; };
 		0Z0000000000000000000F14 /* 7-Zip unRAR License.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "7-Zip unRAR License.txt"; sourceTree = "<group>"; };
 		0Z0000000000000000000F15 /* 7-Zip LGPL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "7-Zip LGPL.txt"; sourceTree = "<group>"; };
+		0Z0000000000000000000F16 /* 7z.sfx */ = {isa = PBXFileReference; lastKnownFileType = file; path = 7z.sfx; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -145,6 +147,7 @@
 				0Z0000000000000000000F13 /* 7-Zip License.txt */,
 				0Z0000000000000000000F14 /* 7-Zip unRAR License.txt */,
 				0Z0000000000000000000F15 /* 7-Zip LGPL.txt */,
+				0Z0000000000000000000F16 /* 7z.sfx */,
 			);
 			name = "7-Zip (built by scripts/build-7zz.sh)";
 			path = Vendor/7zz;
@@ -253,6 +256,7 @@
 				0Z0000000000000000000B05 /* 7-Zip License.txt in Resources */,
 				0Z0000000000000000000B06 /* 7-Zip unRAR License.txt in Resources */,
 				0Z0000000000000000000B07 /* 7-Zip LGPL.txt in Resources */,
+				0Z0000000000000000000B08 /* 7z.sfx in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -284,6 +288,7 @@
 				"$(SRCROOT)/Vendor/7zz/7-Zip License.txt",
 				"$(SRCROOT)/Vendor/7zz/7-Zip unRAR License.txt",
 				"$(SRCROOT)/Vendor/7zz/7-Zip LGPL.txt",
+				"$(SRCROOT)/Vendor/7zz/7z.sfx",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;

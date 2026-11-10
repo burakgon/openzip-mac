@@ -406,3 +406,54 @@ struct ArchiveTests {
         #expect(seen.allSatisfy { ($0.fraction ?? 0) <= 1 })
     }
 }
+
+@Suite("7z archives that extract themselves", .enabled(if: Fixtures.sfxModule != nil, "7z.sfx is not next to 7zz"))
+struct SelfExtractingTests {
+    let engine = Fixtures.engine
+
+    @Test func aProgramForWindowsWithTheArchiveBehindIt() async throws {
+        let scratch = try Scratch()
+        let sample = try scratch.sample()
+        var options = CompressionOptions(format: .sevenZip)
+        options.selfExtracting = true
+        let result = try await engine.compress(CompressionJob(sources: [sample], archive: scratch.path("Sample.exe"), options: options))
+        #expect(result.output.lastPathComponent == "Sample.exe")
+
+        // It starts as every Windows program does, and is longer than the module by the archive.
+        let data = try Data(contentsOf: result.output)
+        let module = try Data(contentsOf: #require(Fixtures.sfxModule))
+        #expect(data.prefix(2) == Data("MZ".utf8))
+        #expect(data.prefix(module.count) == module)
+        #expect(data.count > module.count)
+
+        // And it is still an archive to everything that reads 7z.
+        let listing = try await engine.list(result.output)
+        #expect(listing.info.type == "7z")
+        #expect(listing.info.isSelfExtracting)
+        #expect(listing.paths.contains("Sample/hello.txt"))
+        try FileManager.default.removeItem(at: sample)
+        _ = try await engine.extract(ExtractionJob(archive: result.output, destination: scratch.path("out"), listing: listing))
+        #expect(scratch.text("out/Sample/hello.txt") == "hello world\n")
+    }
+
+    @Test func withAPasswordTheNamesAreHiddenToo() async throws {
+        let scratch = try Scratch()
+        let sample = try scratch.sample()
+        var options = CompressionOptions(format: .sevenZip)
+        options.selfExtracting = true
+        options.encryptFileNames = true
+        let result = try await engine.compress(CompressionJob(sources: [sample], archive: scratch.path("Secret.exe"), options: options, password: "open sesame"))
+        await #expect(throws: ArchiveError.passwordRequired) { try await engine.list(result.output) }
+        #expect(try await engine.list(result.output, password: "open sesame").paths.contains("Sample/hello.txt"))
+    }
+
+    @Test func withoutTheModuleAPlainArchiveIsMade() async throws {
+        let scratch = try Scratch()
+        let sample = try scratch.sample()
+        var options = CompressionOptions(format: .sevenZip)
+        options.selfExtracting = true
+        let plain = ArchiveEngine(tools: Tools(sevenZip: Fixtures.sevenZip))
+        let result = try await plain.compress(CompressionJob(sources: [sample], archive: scratch.path("Sample.7z"), options: options))
+        #expect(try Data(contentsOf: result.output).prefix(2) == Data("7z".utf8))
+    }
+}

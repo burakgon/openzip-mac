@@ -54,7 +54,9 @@ final class AppModel {
         if !customRar.isEmpty, FileManager.default.isExecutableFile(atPath: customRar) {
             rar = URL(filePath: customRar)
         }
-        return Tools(sevenZip: sevenZip, rar: rar)
+        // The Windows program that 7-Zip puts in front of an archive to make it extract itself.
+        let module = Bundle.main.url(forResource: "7z", withExtension: "sfx")
+        return Tools(sevenZip: sevenZip, rar: rar, sfxModule: module)
     }
 
     /// Looks for `rar` again: after it was installed, or pointed to in the settings.

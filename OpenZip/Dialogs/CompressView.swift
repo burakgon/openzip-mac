@@ -102,7 +102,25 @@ final class CompressModel {
 
     var archive: URL {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
-        return folder.appending(path: "\(trimmed.isEmpty ? "Archive" : trimmed).\(format.fileExtension)")
+        return folder.appending(path: "\(trimmed.isEmpty ? "Archive" : trimmed).\(fileExtension)")
+    }
+
+    /// What the name of the archive ends in: that of its format, or that of a Windows
+    /// program for a 7z archive that extracts itself.
+    var fileExtension: String {
+        options.selfExtracting && format == .sevenZip ? "exe" : format.fileExtension
+    }
+
+    /// Whether the archive can be made to extract itself: a RAR, with the program RARLAB
+    /// supplies for the Mac, or a 7z, with 7-Zip's for Windows. Not in volumes: the
+    /// program would only find the first of them.
+    var canExtractItself: Bool {
+        guard options.volumeSize == nil, !usesCustomVolume else { return false }
+        switch format {
+        case .rar: return true
+        case .sevenZip: return AppModel.shared.tools.sfxModule != nil
+        default: return false
+        }
     }
 
     /// The archive exists: creating it means adding to it.
@@ -216,6 +234,7 @@ struct CompressView: View {
                 model.verification = password
                 model.remembersPassword = Demo.arguments.contains("--remember")
             }
+            if Demo.arguments.contains("--sfx") { model.options.selfExtracting = model.canExtractItself }
             guard Demo.arguments.contains("--auto") else { return }
             model.start()
             dismiss()
@@ -319,7 +338,7 @@ private struct CompressForm: View {
                     TextField("Name", text: $model.name)
                         .labelsHidden()
                         .multilineTextAlignment(.trailing)
-                    Text(".\(model.format.fileExtension)")
+                    Text(".\(model.fileExtension)")
                         .foregroundStyle(.secondary)
                 }
             }
@@ -425,7 +444,12 @@ private struct CompressForm: View {
                     }
                     .help("Extra data with which the archive can repair itself after damage.")
                     Toggle("Lock the archive against changes", isOn: $model.options.lock)
-                    Toggle("Make it extract itself (a program for the Terminal)", isOn: $model.options.selfExtracting)
+                }
+                if model.canExtractItself {
+                    Toggle(model.format == .rar ? "Make it extract itself (a program for the Terminal)" : "Make it extract itself (a program for Windows)", isOn: $model.options.selfExtracting)
+                        .help(model.format == .rar
+                            ? "RARLAB’s program for the Mac is put in front of the archive. It runs in the Terminal."
+                            : "7-Zip’s program for Windows is put in front of the archive, which becomes an .exe: whoever gets it needs nothing to open it. A Mac opens it like any 7z archive.")
                 }
             }
         } footer: {
@@ -632,6 +656,8 @@ private struct CompressForm: View {
                     model.usesCustomVolume = true
                     if model.customVolume.isEmpty { model.customVolume = "50" }
                 }
+                // An archive in volumes does not extract itself.
+                model.fit()
             }
         )
     }

@@ -23,8 +23,15 @@ enum Fixtures {
         return Tools.findRar()
     }()
 
+    /// The Windows program that makes a 7z archive extract itself, which the same script
+    /// puts next to 7zz.
+    static let sfxModule: URL? = {
+        let module = sevenZip.deletingLastPathComponent().appending(path: "7z.sfx")
+        return FileManager.default.fileExists(atPath: module.path) ? module : nil
+    }()
+
     static var engine: ArchiveEngine {
-        ArchiveEngine(tools: Tools(sevenZip: sevenZip, rar: rar))
+        ArchiveEngine(tools: Tools(sevenZip: sevenZip, rar: rar, sfxModule: sfxModule))
     }
 }
 
