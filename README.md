@@ -142,8 +142,8 @@ and volumes.
 
 **Creating** RAR archives is something only RARLAB's own program is allowed to do: the format is
 proprietary. OpenZip uses that program if it is on your Mac, and Settings → RAR can download it
-from rarlab.com for you (it is shareware, free to try for 40 days). With it you get everything
-RAR is known for:
+from rarlab.com for you (it is shareware, free to try for 40 days; for an Intel Mac that is
+RAR 7.23, the last one RARLAB made for it). With it you get everything RAR is known for:
 
 - solid archives and RAR's own compression,
 - **recovery records**, with which a damaged archive repairs itself,
