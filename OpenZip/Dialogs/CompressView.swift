@@ -200,7 +200,7 @@ struct CompressView: View {
 private struct CompressForm: View {
     @Bindable var model: CompressModel
     let close: () -> Void
-    @State private var showsAdvanced = false
+    @State private var showsAdvanced = Demo.arguments.contains("--more")
     @State private var savingProfile = false
     @State private var profileName = ""
 
@@ -221,7 +221,7 @@ private struct CompressForm: View {
             footer
         }
         .frame(width: 560)
-        .frame(minHeight: 520, idealHeight: 720, maxHeight: 940)
+        .frame(minHeight: 640, idealHeight: 720, maxHeight: 940)
         .navigationTitle(model.converting == nil ? "New Archive" : "Convert Archive")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

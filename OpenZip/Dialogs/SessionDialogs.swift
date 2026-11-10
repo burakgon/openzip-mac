@@ -318,13 +318,14 @@ struct ConflictSheet: View {
                     .resizable()
                     .frame(width: 48, height: 48)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("“\(conflict.existing.lastPathComponent)” already exists")
+                    Text("“\(conflict.existing.lastPathComponent)” already exists in “\(conflict.existing.deletingLastPathComponent().lastPathComponent)”")
                         .font(.headline)
-                    Text("In \(Formatting.folder(conflict.existing.deletingLastPathComponent())). Replace it with the one from the archive?")
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Replace it with the one from the archive?")
                         .font(.callout)
                         .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
+                .help(conflict.existing.path)
             }
             Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 4) {
                 description("On disk", of: conflict.existing)

@@ -5,7 +5,7 @@ import SwiftUI
 struct AppCommands: Commands {
     @FocusedValue(\.archiveSession) private var session
     @FocusedValue(\.inspectorToggle) private var inspector
-    @Environment(\.openWindow) private var openWindow
+    @FocusedValue(\.searchToggle) private var search
 
     var body: some Commands {
         CommandGroup(after: .appInfo) {
@@ -24,21 +24,11 @@ struct AppCommands: Commands {
                 .keyboardShortcut("e", modifiers: [.command, .option])
         }
 
-        CommandGroup(after: .saveItem) {
-            Divider()
-            Button("Read Again") {
-                if let session { Task { await session.reload() } }
-            }
-            .keyboardShortcut("r")
-            .disabled(session?.isReady != true || session?.isBusy == true)
-            Button("Show in Finder") {
-                if let session { NSWorkspace.shared.activateFileViewerSelecting([session.url]) }
-            }
-            .keyboardShortcut("r", modifiers: [.command, .option])
-            .disabled(session == nil)
-        }
-
         CommandGroup(after: .pasteboard) {
+            Divider()
+            Button("Find") { search?.wrappedValue = true }
+                .keyboardShortcut("f")
+                .disabled(search == nil)
             Divider()
             Button("Rename") {
                 if let session, let id = session.selectedRows.first { session.renameRequest = id }
@@ -147,14 +137,17 @@ struct AppCommands: Commands {
                 if let session { Task { await session.repair() } }
             }
             .disabled(session?.isReady != true || session?.listing.info.isRar != true || AppModel.shared.tools.rar == nil)
-        }
-
-        CommandGroup(before: .windowList) {
-            Button("Welcome to OpenZip") { openWindow(id: WindowID.welcome) }
-                .keyboardShortcut("0", modifiers: [.command, .shift])
-            Button("Activity") { openWindow(id: WindowID.activity) }
-                .keyboardShortcut("0", modifiers: [.command, .option])
             Divider()
+            Button("Read Again") {
+                if let session { Task { await session.reload() } }
+            }
+            .keyboardShortcut("r")
+            .disabled(session?.isReady != true || session?.isBusy == true)
+            Button("Show in Finder") {
+                if let session { NSWorkspace.shared.activateFileViewerSelecting([session.url]) }
+            }
+            .keyboardShortcut("r", modifiers: [.command, .option])
+            .disabled(session == nil)
         }
 
         CommandGroup(replacing: .help) {

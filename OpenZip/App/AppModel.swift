@@ -76,7 +76,8 @@ final class AppModel {
     /// Opens an archive in a window. Any piece of a split archive opens its first.
     func openArchive(_ url: URL) {
         let archive = FileNaming.firstVolume(of: url.standardizedFileURL)
-        NSDocumentController.shared.noteNewRecentDocumentURL(archive)
+        // What the demo opens is staged, and has no place among the user's own archives.
+        if !Demo.isEnabled { NSDocumentController.shared.noteNewRecentDocumentURL(archive) }
         open(.archive(archive))
     }
 
@@ -95,7 +96,9 @@ final class AppModel {
     }
 
     var recentArchives: [URL] {
-        NSDocumentController.shared.recentDocumentURLs.filter { FileManager.default.fileExists(atPath: $0.path) }
+        let staged = Demo.recents
+        if !staged.isEmpty { return staged }
+        return NSDocumentController.shared.recentDocumentURLs.filter { FileManager.default.fileExists(atPath: $0.path) }
     }
 
     // MARK: Passwords

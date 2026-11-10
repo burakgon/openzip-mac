@@ -52,6 +52,7 @@ struct ArchiveBrowser: View {
     @Bindable var session: ArchiveSession
     @SceneStorage("showsInspector") private var showsInspector = false
     @State private var columnVisibility = NavigationSplitViewVisibility.all
+    @State private var isSearchPresented = false
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -64,13 +65,14 @@ struct ArchiveBrowser: View {
         .navigationTitle(session.title)
         .navigationSubtitle(subtitle)
         .navigationDocument(session.url)
-        .searchable(text: $session.searchText, placement: .toolbar, prompt: "Search")
+        .searchable(text: $session.searchText, isPresented: $isSearchPresented, placement: .toolbar, prompt: "Search")
         .inspector(isPresented: $showsInspector) {
             InspectorView(session: session)
                 .inspectorColumnWidth(min: 250, ideal: 290, max: 420)
         }
         .focusedSceneValue(\.archiveSession, session)
         .focusedSceneValue(\.inspectorToggle, $showsInspector)
+        .focusedSceneValue(\.searchToggle, $isSearchPresented)
         .quickLookPreview($session.previewURL)
         .modifier(SessionDialogs(session: session))
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
@@ -275,7 +277,6 @@ private struct LoadingView: View {
 private struct FailedView: View {
     let session: ArchiveSession
     let message: String
-    @Environment(\.dismissWindow) private var dismissWindow
 
     var body: some View {
         ContentUnavailableView {
@@ -584,6 +585,10 @@ struct InspectorToggleKey: FocusedValueKey {
     typealias Value = Binding<Bool>
 }
 
+struct SearchToggleKey: FocusedValueKey {
+    typealias Value = Binding<Bool>
+}
+
 extension FocusedValues {
     /// The archive of the window in front, for the menus.
     var archiveSession: ArchiveSession? {
@@ -594,5 +599,11 @@ extension FocusedValues {
     var inspectorToggle: Binding<Bool>? {
         get { self[InspectorToggleKey.self] }
         set { self[InspectorToggleKey.self] = newValue }
+    }
+
+    /// Puts the cursor into the search field of the window in front.
+    var searchToggle: Binding<Bool>? {
+        get { self[SearchToggleKey.self] }
+        set { self[SearchToggleKey.self] = newValue }
     }
 }

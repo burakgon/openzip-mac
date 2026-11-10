@@ -51,6 +51,7 @@ struct OpenZipApp: App {
             CompressView(draftID: draft)
                 .environment(\.locale, Formatting.locale)
         }
+        .defaultSize(width: 560, height: 740)
         .windowResizability(.contentSize)
         .restorationBehavior(.disabled)
         .handlesExternalEvents(matching: [])

@@ -23,9 +23,17 @@ enum Demo {
         arguments.indices.filter { arguments[$0] == name && $0 + 1 < arguments.count }.map { arguments[$0 + 1] }
     }
 
+    /// Archives to show as opened lately, for the picture of the welcome window.
+    static var recents: [URL] {
+        isEnabled ? values("--recent").map { URL(filePath: ($0 as NSString).expandingTildeInPath) } : []
+    }
+
     /// What to do once the app runs.
     static func launch() {
         guard isEnabled else { return }
+        if arguments.contains("--clear-recents") {
+            NSDocumentController.shared.clearRecentDocuments(nil)
+        }
         if let appearance = value("--appearance") {
             NSApp.appearance = NSAppearance(named: appearance == "dark" ? .darkAqua : .aqua)
         }

@@ -66,10 +66,20 @@ mkdir -p "$STAGE/Existing/Aurora Brand Kit" && echo "mine" > "$STAGE/Existing/Au
 # --- Taking them -------------------------------------------------------------------
 
 # The windows of the app that are on screen: "id<TAB>width<TAB>title", front to back.
+# Before listing them the app is brought to the front, so that its window is drawn the
+# way a window in use is. That takes the Accessibility permission; without it the pictures
+# are taken all the same, of a window that may look inactive.
 windows() {
     swift - <<'SWIFT'
+import AppKit
+import ApplicationServices
 import CoreGraphics
 import Foundation
+if let app = NSWorkspace.shared.runningApplications.first(where: { $0.localizedName == "OpenZip" }) {
+    AXUIElementSetAttributeValue(AXUIElementCreateApplication(app.processIdentifier), kAXFrontmostAttribute as CFString, kCFBooleanTrue)
+    app.activate(options: [.activateAllWindows])
+    Thread.sleep(forTimeInterval: 0.8)
+}
 let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
 for window in list where (window[kCGWindowOwnerName as String] as? String) == "OpenZip" && (window[kCGWindowLayer as String] as? Int) == 0 {
     let bounds = window[kCGWindowBounds as String] as? [String: Any] ?? [:]
@@ -112,20 +122,13 @@ shot info-dark 4 main --appearance dark --open "$SEVEN" --size 1280x740 \
 shot new-archive-light 4 front --appearance light --compress "$STAGE/Aurora Brand Kit" --where "$HOME/Desktop"
 shot extract-light 4 main --appearance light --open "$ZIP" --size 1180x720 --sheet extract --destination "$HOME/Downloads"
 shot conflict-dark 5 main --appearance dark --open "$ZIP" --size 1180x720 --do "extractAsking:$STAGE/Existing"
-shot welcome-dark 3 front --appearance dark --welcome
+shot welcome-dark 3 front --appearance dark --welcome \
+    --recent "~/Downloads/Aurora Brand Kit.zip" --recent "~/Documents/Taxes 2025.7z" \
+    --recent "~/Desktop/Lisbon Photos.rar" --recent "~/Downloads/node-v24.11.0.tar.gz"
 shot settings-light 3 front --appearance light --settings --pane finder
 
-# The icon, as the system draws it.
-swift - "$APP" "$OUT/icon.png" <<'SWIFT'
-import AppKit
-let icon = NSWorkspace.shared.icon(forFile: CommandLine.arguments[1])
-let size = 512
-let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: size, pixelsHigh: size, bitsPerSample: 8, samplesPerPixel: 4,
-                           hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
-NSGraphicsContext.saveGraphicsState()
-NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
-icon.draw(in: NSRect(x: 0, y: 0, width: size, height: size))
-NSGraphicsContext.restoreGraphicsState()
-try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: CommandLine.arguments[2]))
-SWIFT
+# The icon in its everyday colors, whatever the Mac that takes the pictures is set to.
+ICTOOL="${DEVELOPER_DIR:-$(xcode-select -p)}/../Applications/Icon Composer.app/Contents/Executables/ictool"
+"$ICTOOL" OpenZip/AppIcon.icon --export-image --output-file "$OUT/icon.png" \
+    --platform macOS --rendition Default --width 512 --height 512 --scale 1 > /dev/null
 echo "==> $OUT/icon.png"

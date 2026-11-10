@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenZip — the archive manager the Mac was missing</title>
+<meta name="description" content="Open an archive like a folder: look inside, pull a file out, drop a file in, without extracting anything. ZIP, 7z, RAR, TAR and fifty more. Native, free and open source.">
+<meta property="og:title" content="OpenZip — the archive manager the Mac was missing">
+<meta property="og:description" content="Open an archive like a folder and change it in place. ZIP, 7z, RAR, TAR and fifty more formats. Native on Liquid Glass, free and open source.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://burakgon.github.io/openzip-mac/">
+<meta property="og:image" content="https://burakgon.github.io/openzip-mac/images/hero-dark.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" type="image/png" href="images/icon.png">
+<style>
+  :root {
+    --ink: #111318;
+    --soft: #5b6170;
+    --faint: #8a90a0;
+    --page: #f6f7fb;
+    --card: rgba(255, 255, 255, 0.72);
+    --line: rgba(17, 19, 24, 0.09);
+    --tint: #3d6bff;
+    --tint-ink: #ffffff;
+    --glow-a: rgba(61, 107, 255, 0.22);
+    --glow-b: rgba(140, 92, 255, 0.18);
+    --shadow: 0 30px 80px rgba(30, 40, 90, 0.16);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #f2f3f7;
+      --soft: #a7adbd;
+      --faint: #7a8092;
+      --page: #0b0c11;
+      --card: rgba(255, 255, 255, 0.055);
+      --line: rgba(255, 255, 255, 0.1);
+      --tint: #6b8dff;
+      --tint-ink: #0b0c11;
+      --glow-a: rgba(61, 107, 255, 0.28);
+      --glow-b: rgba(140, 92, 255, 0.2);
+      --shadow: 0 30px 90px rgba(0, 0, 0, 0.55);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font: 17px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--page);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  /* Two soft lights behind the top of the page, in the colors of the icon. */
+  body::before {
+    content: "";
+    position: absolute;
+    inset: -200px 0 auto 0;
+    height: 1100px;
+    background:
+      radial-gradient(620px 420px at 22% 30%, var(--glow-a), transparent 70%),
+      radial-gradient(560px 460px at 80% 22%, var(--glow-b), transparent 70%);
+    pointer-events: none;
+    z-index: -1;
+  }
+  a { color: var(--tint); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  nav { display: flex; align-items: center; gap: 12px; padding: 22px 0; }
+  nav .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 18px; color: var(--ink); }
+  nav .brand img { width: 30px; height: 30px; }
+  nav .links { margin-left: auto; display: flex; gap: 22px; font-size: 15px; }
+  nav .links a { color: var(--soft); }
+  nav .links a:hover { color: var(--ink); text-decoration: none; }
+
+  header { text-align: center; padding: 46px 0 28px; }
+  header img.icon { width: 132px; height: 132px; filter: drop-shadow(0 18px 30px rgba(40, 60, 160, 0.28)); }
+  h1 {
+    font: 700 clamp(40px, 6.4vw, 68px)/1.04 -apple-system, "SF Pro Display", "Helvetica Neue", sans-serif;
+    letter-spacing: -0.03em;
+    margin: 18px 0 14px;
+  }
+  header p.lead { font-size: clamp(18px, 2.2vw, 22px); color: var(--soft); max-width: 720px; margin: 0 auto 28px; }
+  .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .button {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 13px 24px; border-radius: 999px;
+    font-weight: 600; font-size: 17px;
+    border: 1px solid var(--line);
+    background: var(--card); color: var(--ink);
+    backdrop-filter: blur(20px) saturate(1.6); -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .button:hover { text-decoration: none; transform: translateY(-1px); box-shadow: 0 10px 30px rgba(40, 60, 160, 0.18); }
+  .button.primary { background: var(--tint); color: var(--tint-ink); border-color: transparent; }
+  .button svg { width: 18px; height: 18px; fill: currentColor; }
+  .small { font-size: 14px; color: var(--faint); margin-top: 14px; }
+
+  .shot { margin: 44px auto 0; max-width: 1000px; }
+  .shot img { width: 100%; height: auto; display: block; }
+
+  section { padding: 72px 0 0; }
+  h2 {
+    font: 700 clamp(28px, 3.6vw, 40px)/1.12 -apple-system, "SF Pro Display", sans-serif;
+    letter-spacing: -0.022em; margin: 0 0 12px; text-align: center;
+  }
+  section > .wrap > p.sub { text-align: center; color: var(--soft); max-width: 700px; margin: 0 auto 36px; font-size: 19px; }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 24px;
+    backdrop-filter: blur(24px) saturate(1.6); -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  }
+  .card .glyph {
+    width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 14px;
+    background: linear-gradient(140deg, var(--tint), #8c5cff); color: #fff;
+  }
+  .card .glyph svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  .card h3 { margin: 0 0 6px; font-size: 19px; letter-spacing: -0.01em; }
+  .card p { margin: 0; color: var(--soft); font-size: 15.5px; }
+
+  .split { display: grid; grid-template-columns: 1fr 1.25fr; gap: 44px; align-items: center; }
+  .split.flip { grid-template-columns: 1.25fr 1fr; }
+  .split.flip .text { order: 2; }
+  .split h2 { text-align: left; }
+  .split p { color: var(--soft); margin: 0 0 14px; }
+  .split ul { margin: 0; padding: 0; list-style: none; color: var(--soft); }
+  .split li { padding: 5px 0 5px 28px; position: relative; }
+  .split li::before {
+    content: ""; position: absolute; left: 2px; top: 13px; width: 14px; height: 8px;
+    border-left: 2.4px solid var(--tint); border-bottom: 2.4px solid var(--tint); transform: rotate(-45deg);
+  }
+  .split li b { color: var(--ink); font-weight: 600; }
+  .split img { width: 100%; height: auto; display: block; }
+
+  .formats { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 880px; margin: 0 auto; }
+  .formats span {
+    padding: 6px 13px; border-radius: 999px; font-size: 14.5px; font-weight: 550;
+    background: var(--card); border: 1px solid var(--line); color: var(--soft);
+  }
+  .formats span.write { color: var(--ink); border-color: color-mix(in srgb, var(--tint) 55%, transparent); }
+  .legend { text-align: center; color: var(--faint); font-size: 14px; margin-top: 16px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--tint); margin: 0 6px 0 14px; vertical-align: -1px; }
+
+  .safety { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 40px; max-width: 900px; margin: 0 auto; }
+  .safety div { color: var(--soft); font-size: 16px; }
+  .safety b { color: var(--ink); display: block; font-weight: 600; margin-bottom: 2px; }
+
+  .cta { text-align: center; padding: 84px 0 30px; }
+  .cta h2 { margin-bottom: 20px; }
+
+  footer { border-top: 1px solid var(--line); margin-top: 64px; padding: 26px 0 44px; color: var(--faint); font-size: 14px; text-align: center; }
+  footer a { color: var(--soft); }
+
+  @media (max-width: 860px) {
+    .grid { grid-template-columns: 1fr; }
+    .split, .split.flip { grid-template-columns: 1fr; gap: 22px; }
+    .split.flip .text { order: 0; }
+    .split h2 { text-align: center; }
+    .safety { grid-template-columns: 1fr; }
+    nav .links a.hide { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <nav>
+    <a class="brand" href="#"><img src="images/icon.png" alt="">OpenZip</a>
+    <div class="links">
+      <a class="hide" href="#features">Features</a>
+      <a class="hide" href="#formats">Formats</a>
+      <a class="hide" href="#safety">Safety</a>
+      <a href="https://github.com/burakgon/openzip-mac">GitHub</a>
+    </div>
+  </nav>
+
+  <header>
+    <img class="icon" src="images/icon.png" alt="OpenZip icon">
+    <h1>The archive manager<br>the Mac was missing.</h1>
+    <p class="lead">Open an archive like a folder. Look inside, pull a file out, drop a file in, rename, delete — without extracting anything first.</p>
+    <div class="actions">
+      <a class="button primary" href="https://github.com/burakgon/openzip-mac/releases/latest/download/OpenZip.dmg">
+        <svg viewBox="0 0 24 24"><path d="M12 3a1 1 0 0 1 1 1v9.6l3.3-3.3a1 1 0 1 1 1.4 1.4l-5 5a1 1 0 0 1-1.4 0l-5-5a1 1 0 1 1 1.4-1.4L11 13.6V4a1 1 0 0 1 1-1ZM5 19a1 1 0 1 0 0 2h14a1 1 0 1 0 0-2H5Z"/></svg>
+        Download for macOS
+      </a>
+      <a class="button" href="https://github.com/burakgon/openzip-mac">
+        <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02a9.56 9.56 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85V21c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg>
+        Source on GitHub
+      </a>
+    </div>
+    <p class="small">Free and open source · macOS 26 or later · Apple silicon and Intel · 7 MB</p>
+
+    <div class="shot">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="images/hero-dark.png">
+        <img src="images/hero-light.png" width="1292" height="832" alt="An OpenZip window showing the folders and files inside a ZIP archive">
+      </picture>
+    </div>
+  </header>
+</div>
+
+<section id="features">
+  <div class="wrap">
+    <h2>What WinRAR is to Windows.</h2>
+    <p class="sub">macOS extracts whole archives and makes ZIPs of folders, and stops there. OpenZip is the rest, in one native app that costs nothing.</p>
+    <div class="grid">
+      <div class="card">
+        <div class="glyph"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg></div>
+        <h3>Archives open like folders</h3>
+        <p>A sidebar of folders, a list you can sort and search, Quick Look with the space bar. Nothing is unpacked to show it.</p>
+      </div>
+      <div class="card">
+        <div class="glyph"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+        <h3>Change them in place</h3>
+        <p>Drop files in, delete, rename, move, make folders. The archive is rewritten, not extracted and packed again.</p>
+      </div>
+      <div class="card">
+        <div class="glyph"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg></div>
+        <h3>Take out only what you need</h3>
+        <p>Drag one file out of a 20 GB backup to the Finder. Only that file is extracted.</p>
+      </div>
+      <div class="card">
+        <div class="glyph"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
+        <h3>Passwords that hide everything</h3>
+        <p>AES-256 for ZIP, 7z and RAR. For 7z and RAR even the names of the files are encrypted.</p>
+      </div>
+      <div class="card">
+        <div class="glyph"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></div>
+        <h3>Every option that matters</h3>
+        <p>Six levels, methods and dictionary sizes, solid archives, split volumes, profiles to keep your choices in.</p>
+      </div>
+      <div class="card">
+        <div class="glyph"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H5zM9 19h6M12 15v4"/></svg></div>
+        <h3>At home in the Finder</h3>
+        <p>“Extract Here” and “Compress to ZIP” in the Finder’s menu, drag and drop both ways, drop anything on the Dock icon.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap split">
+    <div class="text">
+      <h2>Create archives your way.</h2>
+      <p>The window WinRAR calls “Archive name and parameters”, as a Mac would have it.</p>
+      <ul>
+        <li><b>ZIP, 7z, TAR, TAR.GZ, TAR.XZ</b> and more, RAR with RARLAB’s RAR</li>
+        <li><b>No Mac litter</b>: no .DS_Store, no __MACOSX in what you send to Windows</li>
+        <li><b>Split into volumes</b> for email, FAT32 or any size</li>
+        <li><b>One archive per item</b>, test when done, originals to the Trash</li>
+        <li><b>Convert</b> any archive into another format</li>
+      </ul>
+    </div>
+    <img src="images/new-archive-light.png" width="1276" height="1300" alt="The New Archive window with name, format, compression levels and password">
+  </div>
+</section>
+
+<section>
+  <div class="wrap split flip">
+    <div class="text">
+      <h2>Extract without regrets.</h2>
+      <p>“Extract Here” never leaves a hundred loose files in Downloads: one item comes out as it is, many get a folder.</p>
+      <ul>
+        <li><b>Asks before replacing</b>, once or for every file, and shows both versions</li>
+        <li><b>Nothing half-done</b>: files appear when the extraction is complete</li>
+        <li><b>Downloads stay downloads</b>: Gatekeeper still checks what comes out</li>
+        <li><b>Resource forks and tags</b> are folded back into their files</li>
+      </ul>
+    </div>
+    <img src="images/conflict-dark.png" width="1292" height="832" alt="OpenZip asking what to do about a file that already exists, showing both versions">
+  </div>
+</section>
+
+<section>
+  <div class="wrap split">
+    <div class="text">
+      <h2>Know what you have.</h2>
+      <p>The Info panel tells you everything about a file before you extract it, and about the archive itself.</p>
+      <ul>
+        <li><b>Sizes, ratio, CRC32</b>, method and permissions per file</li>
+        <li><b>Test</b> every file of an archive for damage</li>
+        <li><b>SHA-256</b> of the archive, to compare with its source</li>
+        <li><b>Comments</b>, recovery records and locks for RAR</li>
+      </ul>
+    </div>
+    <img src="images/info-dark.png" width="1292" height="800" alt="The Info panel beside the file list, with the details of the selected file and of the archive">
+  </div>
+</section>
+
+<section id="formats">
+  <div class="wrap">
+    <h2>If it is an archive, it opens.</h2>
+    <p class="sub">More than fifty formats, with passwords, split volumes and hidden file names.</p>
+    <div class="formats">
+      <span class="write">ZIP</span><span class="write">7z</span><span class="write">RAR</span><span class="write">TAR</span><span class="write">TAR.GZ</span><span class="write">TAR.BZ2</span><span class="write">TAR.XZ</span><span class="write">GZ</span><span class="write">BZ2</span><span class="write">XZ</span><span class="write">WIM</span>
+      <span>ZIPX</span><span>Zstandard</span><span>LZMA</span><span>Z</span><span>CAB</span><span>ARJ</span><span>LZH</span><span>CPIO</span><span>XAR</span><span>ISO</span><span>UDF</span><span>DMG</span><span>VHD</span><span>VHDX</span><span>VMDK</span><span>VDI</span><span>QCOW2</span><span>APFS</span><span>HFS+</span><span>NTFS</span><span>FAT</span><span>ext4</span><span>SquashFS</span><span>PKG</span><span>RPM</span><span>DEB</span><span>JAR</span><span>APK</span><span>IPA</span><span>MSI</span><span>NSIS</span><span>CHM</span><span>.001</span><span>.part1.rar</span>
+    </div>
+    <p class="legend"><i></i>also created and changed in place. RAR is written with RARLAB’s own RAR, which OpenZip sets up for you.</p>
+  </div>
+</section>
+
+<section id="safety">
+  <div class="wrap">
+    <h2>Careful with other people’s data.</h2>
+    <p class="sub">An archive is somebody else’s files, often from the internet. OpenZip treats it that way.</p>
+    <div class="safety">
+      <div><b>The engine runs in a process of its own</b>A damaged or hostile archive can at worst crash the helper, never the app.</div>
+      <div><b>Nothing escapes the folder you chose</b>Paths like ../../ and links that point outside stay inside the destination.</div>
+      <div><b>Passwords are never arguments</b>They go to 7-Zip through a pipe, where other programs cannot see them.</div>
+      <div><b>7-Zip is built from its source</b>Downloaded from its own repository, checked by SHA-256, compiled.</div>
+      <div><b>Signed twice</b>Notarized by Apple, and every update signed with the project’s own key.</div>
+      <div><b>No account, no analytics</b>The only network request is the check for updates, and you can turn it off.</div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap cta">
+  <h2>Free. Open source. Yours.</h2>
+  <div class="actions">
+    <a class="button primary" href="https://github.com/burakgon/openzip-mac/releases/latest/download/OpenZip.dmg">
+      <svg viewBox="0 0 24 24"><path d="M12 3a1 1 0 0 1 1 1v9.6l3.3-3.3a1 1 0 1 1 1.4 1.4l-5 5a1 1 0 0 1-1.4 0l-5-5a1 1 0 1 1 1.4-1.4L11 13.6V4a1 1 0 0 1 1-1ZM5 19a1 1 0 1 0 0 2h14a1 1 0 1 0 0-2H5Z"/></svg>
+      Download OpenZip
+    </a>
+    <a class="button" href="https://github.com/burakgon/openzip-mac#build-it-yourself">Build it yourself</a>
+  </div>
+  <p class="small">If it saves you a purchase, a star on GitHub helps other people find it.</p>
+</div>
+
+<footer>
+  <div class="wrap">
+    <a href="https://github.com/burakgon/openzip-mac">GitHub</a> · <a href="https://github.com/burakgon/openzip-mac/releases">Releases</a> · <a href="https://github.com/burakgon/openzip-mac/issues">Issues</a> · <a href="https://github.com/burakgon/openzip-mac/blob/main/LICENSE">MIT License</a>
+    <p>Built with <a href="https://7-zip.org">7-Zip</a> and <a href="https://sparkle-project.org">Sparkle</a>. OpenZip is an independent project, not affiliated with RARLAB, win.rar GmbH or 7-Zip. WinRAR and RAR are trademarks of their owners.</p>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -53,6 +53,7 @@ struct FileTable: NSViewRepresentable {
         table.target = coordinator
         table.doubleAction = #selector(Coordinator.openClicked)
         table.onKey = { [weak coordinator] event in coordinator?.handleKey(event) ?? false }
+        table.selectedNames = { [session] in session.selectedRows.map { session.tree[$0].name } }
         table.menu = NSMenu()
         table.menu?.delegate = coordinator
         table.headerView?.menu = coordinator.makeColumnsMenu(for: table)
@@ -610,6 +611,20 @@ nonisolated final class NodePromiseProvider: NSFilePromiseProvider {
 /// The table itself, which lets its coordinator have a go at the keys first.
 final class FileTableView: NSTableView {
     var onKey: ((NSEvent) -> Bool)?
+    /// The names of the selected rows, for Copy.
+    var selectedNames: (() -> [String])?
+
+    /// Edit → Copy: the names of what is selected, one per line.
+    @objc func copy(_ sender: Any?) {
+        guard let names = selectedNames?(), !names.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(names.joined(separator: "\n"), forType: .string)
+    }
+
+    override func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
+        if item.action == #selector(copy(_:)) { return selectedRow >= 0 }
+        return super.validateUserInterfaceItem(item)
+    }
 
     override func keyDown(with event: NSEvent) {
         if onKey?(event) == true { return }
