@@ -141,6 +141,13 @@ struct AppCommands: Commands {
                 if let session { Task { await session.repair() } }
             }
             .disabled(session?.isReady != true || session?.listing.info.isRar != true || AppModel.shared.tools.rar == nil)
+            // What only a RAR archive in several volumes has.
+            Button("Add Recovery Volumes…") { session?.sheet = .recoveryVolumes }
+                .disabled(!canProtectVolumes)
+            Button("Rebuild Missing Volumes") {
+                if let session { Task { await session.rebuildVolumes() } }
+            }
+            .disabled(!canProtectVolumes)
             Divider()
             Button("Read Again") {
                 if let session { Task { await session.reload() } }
@@ -160,6 +167,15 @@ struct AppCommands: Commands {
             Link("OpenZip Website", destination: URL(string: "https://burakgon.github.io/openzip-mac/")!)
             Link("Report a Problem", destination: URL(string: "https://github.com/burakgon/openzip-mac/issues/new/choose")!)
         }
+    }
+}
+
+extension AppCommands {
+    /// Whether the window in front shows a RAR archive in several volumes, with nothing
+    /// going on in it, and RARLAB's RAR is there to work on it.
+    private var canProtectVolumes: Bool {
+        guard let session, session.isReady, !session.isBusy, AppModel.shared.tools.rar != nil else { return false }
+        return session.listing.info.isRar && session.listing.info.isMultiVolume
     }
 }
 

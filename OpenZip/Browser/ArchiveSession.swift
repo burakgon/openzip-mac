@@ -53,6 +53,7 @@ enum SessionSheet: Identifiable {
     case newFolder
     case comment
     case recoveryRecord
+    case recoveryVolumes
     case details(Notice)
 
     var id: String {
@@ -62,6 +63,7 @@ enum SessionSheet: Identifiable {
         case .newFolder: "newFolder"
         case .comment: "comment"
         case .recoveryRecord: "recoveryRecord"
+        case .recoveryVolumes: "recoveryVolumes"
         case .details: "details"
         }
     }
@@ -725,6 +727,46 @@ final class ArchiveSession: Identifiable {
             try await engine.addRecoveryRecord(to: self.url, percent: percent, password: password, control: control, progress: progress)
         }
         if changed { notice = Notice(kind: .success, text: "The archive can now repair itself after damage") }
+    }
+
+    /// Makes recovery volumes for an archive that is split into volumes.
+    func addRecoveryVolumes(count: Int) async {
+        do {
+            let made = try await perform("Making recovery volumes") { engine, password, control, progress in
+                try await engine.addRecoveryVolumes(to: self.url, count: count, password: password, control: control, progress: progress)
+            }
+            notice = Notice(
+                kind: .success,
+                text: "Made \(Formatting.count(made.count, "recovery volume")): as many volumes may now get lost",
+                reveal: made
+            )
+        } catch {
+            report(error)
+        }
+    }
+
+    /// Makes the volumes that are missing again, from the recovery volumes.
+    func rebuildVolumes() async {
+        do {
+            let back = try await perform("Rebuilding the missing volumes") { engine, password, control, progress in
+                try await engine.rebuildVolumes(of: self.url, password: password, control: control, progress: progress)
+            }
+            // If the first volume was among the lost, the window was opened on another
+            // one and saw only part of the archive. Now it can look at all of it.
+            let first = FileNaming.firstVolume(of: url)
+            if first != url {
+                app.remember(password, for: first)
+                url = first
+            }
+            await reload()
+            notice = Notice(
+                kind: .success,
+                text: back.count == 1 ? "“\(back[0].lastPathComponent)” is back" : "\(Formatting.count(back.count, "volume")) are back",
+                reveal: back
+            )
+        } catch {
+            report(error)
+        }
     }
 
     func repair() async {

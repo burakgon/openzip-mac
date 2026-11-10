@@ -311,3 +311,33 @@ struct ArchiveReportTests {
         #expect(ArchiveReport.make(of: ArchiveListing(), named: "e.7z", as: .text).hasPrefix("e.7z\nArchive, 0 files, 0 bytes\n"))
     }
 }
+
+@Suite("Options that were stored")
+struct StoredOptionsTests {
+    @Test func whatAnEarlierVersionStoredIsStillRead() throws {
+        // Exactly what OpenZip 1.0 kept as the options of the last archive.
+        let stored = #"{"recoveryPercent":3,"storeSymbolicLinks":false,"lock":false,"excludeMacFiles":true,"updateMode":"addAndReplace","selfExtracting":false,"excludePatterns":["*.tmp"],"format":"7z","zipEncryption":"AES256","encryptFileNames":true,"level":7,"comment":""}"#
+        let options = try JSONDecoder().decode(CompressionOptions.self, from: Data(stored.utf8))
+        #expect(options.format == .sevenZip)
+        #expect(options.level == .maximum)
+        #expect(options.recoveryPercent == 3)
+        #expect(!options.storeSymbolicLinks)
+        #expect(options.encryptFileNames)
+        #expect(options.excludePatterns == ["*.tmp"])
+        // What that version did not know yet has the value it starts with.
+        #expect(options.recoveryVolumes == 0)
+    }
+
+    @Test func survivesBeingStoredAndRead() throws {
+        var options = CompressionOptions(format: .rar, level: .ultra)
+        options.volumeSize = 700 << 20
+        options.recoveryVolumes = 2
+        options.dictionarySize = 64 << 20
+        options.solid = true
+        options.comment = "Packed here"
+        let read = try JSONDecoder().decode(CompressionOptions.self, from: JSONEncoder().encode(options))
+        #expect(read == options)
+        // And almost nothing at all is enough to read.
+        #expect(try JSONDecoder().decode(CompressionOptions.self, from: Data("{}".utf8)) == CompressionOptions())
+    }
+}

@@ -19,6 +19,8 @@ struct SessionDialogs: ViewModifier {
                     CommentSheet(session: session)
                 case .recoveryRecord:
                     RecoveryRecordSheet(session: session)
+                case .recoveryVolumes:
+                    RecoveryVolumesSheet(session: session)
                 case .details(let notice):
                     DetailsSheet(notice: notice)
                 }
@@ -488,6 +490,41 @@ struct RecoveryRecordSheet: View {
                     let percent = Int(percent)
                     dismiss()
                     Task { await session.addRecoveryRecord(percent: percent) }
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(width: 460)
+    }
+}
+
+/// Asks how many recovery volumes to make for an archive that is split into volumes.
+struct RecoveryVolumesSheet: View {
+    let session: ArchiveSession
+    @Environment(\.dismiss) private var dismiss
+    @State private var count = 1
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Protect the Volumes of “\(session.title)”")
+                .font(.headline)
+            Text("A recovery volume is one more file next to the volumes, ending in .rev. Each of them can stand in for any one volume that is lost or damaged: with two, any two volumes may go.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Stepper(value: $count, in: 1...9) {
+                Text(Formatting.count(count, "recovery volume"))
+                    .monospacedDigit()
+            }
+            HStack {
+                Spacer()
+                Button("Cancel", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button("Make Recovery Volumes") {
+                    let count = count
+                    dismiss()
+                    Task { await session.addRecoveryVolumes(count: count) }
                 }
                 .keyboardShortcut(.defaultAction)
             }

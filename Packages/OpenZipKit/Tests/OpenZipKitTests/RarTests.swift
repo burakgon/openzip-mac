@@ -152,6 +152,57 @@ struct RarTests {
     }
 }
 
+extension RarTests {
+    @Test func aLostVolumeComesBackFromTheRecoveryVolumes() async throws {
+        let scratch = try Scratch()
+        try scratch.file("data/payload.bin", bytes: 900_000)
+        var options = CompressionOptions(format: .rar, level: .store)
+        options.volumeSize = 400_000
+        options.recoveryVolumes = 1
+        let result = try await engine.compress(CompressionJob(sources: [scratch.path("data")], archive: scratch.path("v.rar"), options: options))
+        #expect(result.output.lastPathComponent == "v.part1.rar")
+        let made = try FileManager.default.contentsOfDirectory(atPath: scratch.url.path).filter { $0.hasPrefix("v.part") }.sorted()
+        #expect(made.filter { $0.hasSuffix(".rar") }.count == 3)
+        #expect(made.filter { $0.hasSuffix(".rev") }.count == 1)
+
+        // One volume is lost. Without it the archive is incomplete; with the recovery
+        // volume it can be made again, and is whole.
+        try FileManager.default.removeItem(at: scratch.path("v.part2.rar"))
+        let back = try await engine.rebuildVolumes(of: scratch.path("v.part1.rar"))
+        #expect(back.map(\.lastPathComponent) == ["v.part2.rar"])
+        #expect(try await engine.test(scratch.path("v.part1.rar")).isClean)
+        let listing = try await engine.list(scratch.path("v.part1.rar"))
+        _ = try await engine.extract(ExtractionJob(archive: scratch.path("v.part1.rar"), destination: scratch.path("out"), listing: listing))
+        #expect(try Data(contentsOf: scratch.path("out/data/payload.bin")) == Data(contentsOf: scratch.path("data/payload.bin")))
+
+        // Nothing is missing now: there is nothing to make.
+        await #expect(throws: ArchiveError.self) { try await engine.rebuildVolumes(of: scratch.path("v.part1.rar")) }
+    }
+
+    @Test func recoveryVolumesCanBeMadeLater() async throws {
+        let scratch = try Scratch()
+        try scratch.file("data/payload.bin", bytes: 900_000)
+        var options = CompressionOptions(format: .rar, level: .store)
+        options.volumeSize = 400_000
+        _ = try await engine.compress(CompressionJob(sources: [scratch.path("data")], archive: scratch.path("w.rar"), options: options))
+        // Any volume names the set.
+        let made = try await engine.addRecoveryVolumes(to: scratch.path("w.part3.rar"), count: 2)
+        #expect(made.count == 2)
+        #expect(made.allSatisfy { $0.pathExtension == "rev" })
+
+        // Two volumes can go now.
+        try FileManager.default.removeItem(at: scratch.path("w.part1.rar"))
+        try FileManager.default.removeItem(at: scratch.path("w.part3.rar"))
+        let back = try await engine.rebuildVolumes(of: scratch.path("w.part2.rar"))
+        #expect(back.map(\.lastPathComponent) == ["w.part1.rar", "w.part3.rar"])
+        #expect(try await engine.test(scratch.path("w.part1.rar")).isClean)
+
+        // An archive in one piece has nothing to protect this way.
+        let single = try await makeRar(scratch, "single.rar")
+        await #expect(throws: ArchiveError.self) { try await engine.addRecoveryVolumes(to: single, count: 1) }
+    }
+}
+
 @Suite("RAR archives without rar")
 struct RarWithoutRarTests {
     @Test func canBeReadAndSaysWhatIsMissing() async throws {

@@ -135,7 +135,10 @@ extension ArchiveEngine {
         if options.solid == true { arguments.append("-s") }
         if let threads = options.threads, threads > 0 { arguments.append("-mt\(threads)") }
         if options.recoveryPercent > 0 { arguments.append("-rr\(options.recoveryPercent)p") }
-        if let volume = options.volumeSize, volume > 0 { arguments.append("-v\(volume)b") }
+        if let volume = options.volumeSize, volume > 0 {
+            arguments.append("-v\(volume)b")
+            if options.recoveryVolumes > 0 { arguments.append("-rv\(options.recoveryVolumes)") }
+        }
         if options.storeSymbolicLinks { arguments.append("-ol") }
         if options.lock { arguments.append("-k") }
         if options.selfExtracting {
@@ -234,6 +237,45 @@ extension ArchiveEngine {
         if password?.isEmpty == false { arguments.append("-p") }
         arguments += ["--", archive.path]
         try await runRar(arguments, password: password, control: control, progress: progress)
+    }
+
+    /// Makes recovery volumes for a RAR archive that is split into volumes: files ending
+    /// in .rev, each of which can stand in for any one volume that is lost or damaged.
+    /// Returns the files that were made.
+    @discardableResult
+    public func addRecoveryVolumes(
+        to archive: URL, count: Int, password: String? = nil,
+        control: OperationControl? = nil, progress: ProgressHandler? = nil
+    ) async throws -> [URL] {
+        let first = FileNaming.firstVolume(of: archive)
+        let folder = first.deletingLastPathComponent()
+        let before = Set((try? Directory.names(in: folder)) ?? [])
+        var arguments = ["rv\(max(1, count))"] + Self.rarQuiet
+        if password?.isEmpty == false { arguments.append("-p") }
+        arguments += ["--", first.path]
+        try await runRar(arguments, directory: folder, password: password, control: control, progress: progress)
+        let made = ((try? Directory.names(in: folder)) ?? []).filter { !before.contains($0) && $0.lowercased().hasSuffix(".rev") }
+        guard !made.isEmpty else { throw ArchiveError.failed("RAR made no recovery volumes. Only an archive that is split into volumes can have them.") }
+        return made.sorted().map { folder.appending(path: $0) }
+    }
+
+    /// Makes the volumes of a split RAR archive again that are missing, from its recovery
+    /// volumes. `archive` is any volume that is still there, or one of the .rev files.
+    /// Returns the volumes that came back.
+    @discardableResult
+    public func rebuildVolumes(
+        of archive: URL, password: String? = nil,
+        control: OperationControl? = nil, progress: ProgressHandler? = nil
+    ) async throws -> [URL] {
+        let folder = archive.deletingLastPathComponent()
+        let before = Set((try? Directory.names(in: folder)) ?? [])
+        var arguments = ["rc"] + Self.rarQuiet
+        if password?.isEmpty == false { arguments.append("-p") }
+        arguments += ["--", archive.path]
+        try await runRar(arguments, directory: folder, password: password, control: control, progress: progress)
+        let made = ((try? Directory.names(in: folder)) ?? []).filter { !before.contains($0) && $0.lowercased().hasSuffix(".rar") }
+        guard !made.isEmpty else { throw ArchiveError.failed("No volume was missing, or there were not enough recovery volumes to make it again.") }
+        return made.sorted().map { folder.appending(path: $0) }
     }
 
     /// Repairs a damaged RAR archive, with its recovery record if it has one. The repaired

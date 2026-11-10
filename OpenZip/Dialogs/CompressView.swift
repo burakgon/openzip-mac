@@ -87,6 +87,7 @@ final class CompressModel {
         if !format.supportsSelfExtracting || format != .rar { options.selfExtracting = false }
         if format != .rar {
             options.recoveryPercent = 0
+            options.recoveryVolumes = 0
             options.lock = false
         }
         if !format.supportsComment { options.comment = "" }
@@ -411,6 +412,12 @@ private struct CompressForm: View {
                             }
                         }
                     }
+                }
+                if model.format == .rar, model.options.volumeSize != nil || model.usesCustomVolume {
+                    Stepper(value: $model.options.recoveryVolumes, in: 0...9) {
+                        LabeledContent("Recovery volumes", value: model.options.recoveryVolumes == 0 ? "None" : "\(model.options.recoveryVolumes)")
+                    }
+                    .help("Extra files next to the volumes, each of which can stand in for any one volume that gets lost.")
                 }
                 if model.format == .rar {
                     Stepper(value: $model.options.recoveryPercent, in: 0...30) {

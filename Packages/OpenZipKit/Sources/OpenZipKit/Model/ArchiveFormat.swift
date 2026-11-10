@@ -299,10 +299,39 @@ public struct CompressionOptions: Sendable, Hashable, Codable {
 
     /// RAR: the size of the recovery record, as a percentage of the archive. 0 for none.
     public var recoveryPercent = 0
+    /// RAR, when the archive is split into volumes: how many recovery volumes to make
+    /// with them. Each can stand in for any one volume that is lost. 0 for none.
+    public var recoveryVolumes = 0
     /// RAR: refuse later changes.
     public var lock = false
 
     public init() {}
+
+    /// Reads options that were stored, by this version or an earlier one: what an
+    /// earlier one did not know yet keeps the value it starts with. The profiles and the
+    /// options of the last archive are kept this way, and are not to be lost to an update.
+    public init(from decoder: Decoder) throws {
+        self.init()
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        format = try values.decodeIfPresent(ArchiveFormat.self, forKey: .format) ?? format
+        level = try values.decodeIfPresent(CompressionLevel.self, forKey: .level) ?? level
+        method = try values.decodeIfPresent(String.self, forKey: .method)
+        dictionarySize = try values.decodeIfPresent(UInt64.self, forKey: .dictionarySize)
+        solid = try values.decodeIfPresent(Bool.self, forKey: .solid)
+        threads = try values.decodeIfPresent(Int.self, forKey: .threads)
+        volumeSize = try values.decodeIfPresent(UInt64.self, forKey: .volumeSize)
+        updateMode = try values.decodeIfPresent(UpdateMode.self, forKey: .updateMode) ?? updateMode
+        encryptFileNames = try values.decodeIfPresent(Bool.self, forKey: .encryptFileNames) ?? encryptFileNames
+        zipEncryption = try values.decodeIfPresent(ZipEncryption.self, forKey: .zipEncryption) ?? zipEncryption
+        excludeMacFiles = try values.decodeIfPresent(Bool.self, forKey: .excludeMacFiles) ?? excludeMacFiles
+        excludePatterns = try values.decodeIfPresent([String].self, forKey: .excludePatterns) ?? excludePatterns
+        storeSymbolicLinks = try values.decodeIfPresent(Bool.self, forKey: .storeSymbolicLinks) ?? storeSymbolicLinks
+        selfExtracting = try values.decodeIfPresent(Bool.self, forKey: .selfExtracting) ?? selfExtracting
+        comment = try values.decodeIfPresent(String.self, forKey: .comment) ?? comment
+        recoveryPercent = try values.decodeIfPresent(Int.self, forKey: .recoveryPercent) ?? recoveryPercent
+        recoveryVolumes = try values.decodeIfPresent(Int.self, forKey: .recoveryVolumes) ?? recoveryVolumes
+        lock = try values.decodeIfPresent(Bool.self, forKey: .lock) ?? lock
+    }
 
     public init(format: ArchiveFormat, level: CompressionLevel = .normal) {
         self.format = format

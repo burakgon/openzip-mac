@@ -180,6 +180,10 @@ enum Demo {
                 let responder = NSApp.keyWindow?.firstResponder.map { String(describing: type(of: $0)) } ?? "none"
                 print("SENT \(argument): \(handled ? "taken" : "not taken"), the focus is on \(responder) in \(NSApp.keyWindow?.title ?? "no key window")")
                 try? await Task.sleep(for: .seconds(0.2))
+            case "recoveryVolumes":
+                await session.addRecoveryVolumes(count: Int(argument) ?? 1)
+            case "rebuild":
+                await session.rebuildVolumes()
             case "report":
                 let file = URL(filePath: argument)
                 session.writeReport(to: file, as: file.pathExtension == "csv" ? .csv : .text)
