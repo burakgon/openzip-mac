@@ -824,7 +824,8 @@ enum BrowserActions {
         formats.action = #selector(ActionMenuItem.Target.run)
 
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        session.writeReport(to: url, as: formats.indexOfSelectedItem == 0 ? .csv : .text)
+        let format: ArchiveReport.Format = formats.indexOfSelectedItem == 0 ? .csv : .text
+        Task { await session.writeReport(to: url, as: format) }
     }
 
     /// Asks for files and adds them to the folder the window shows.

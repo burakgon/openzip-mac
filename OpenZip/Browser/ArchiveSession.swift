@@ -823,10 +823,15 @@ final class ArchiveSession: Identifiable {
 
     // MARK: Reporting
 
-    /// Writes the list of what is in the archive to a file.
-    func writeReport(to file: URL, as format: ArchiveReport.Format) {
+    /// Writes the list of what is in the archive to a file. Away from the window's own
+    /// thread: sorting a hundred thousand names takes a moment.
+    func writeReport(to file: URL, as format: ArchiveReport.Format) async {
+        let listing = listing
+        let name = title
         do {
-            try ArchiveReport.make(of: listing, named: title, as: format).write(to: file, atomically: true, encoding: .utf8)
+            try await Task.detached {
+                try ArchiveReport.make(of: listing, named: name, as: format).write(to: file, atomically: true, encoding: .utf8)
+            }.value
             notice = Notice(kind: .success, text: "The list of \(Formatting.count(listing.entries.count, "item")) is in “\(file.lastPathComponent)”", reveal: [file])
         } catch {
             report(error)

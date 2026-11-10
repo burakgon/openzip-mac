@@ -186,7 +186,7 @@ enum Demo {
                 await session.rebuildVolumes()
             case "report":
                 let file = URL(filePath: argument)
-                session.writeReport(to: file, as: file.pathExtension == "csv" ? .csv : .text)
+                await session.writeReport(to: file, as: file.pathExtension == "csv" ? .csv : .text)
             case "vault":
                 print("VAULT: \(PasswordVault.entries().map(\.label).joined(separator: "|"))")
             case "clipboard":
