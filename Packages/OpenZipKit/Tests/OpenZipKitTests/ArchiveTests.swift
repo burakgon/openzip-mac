@@ -101,6 +101,19 @@ struct ArchiveTests {
         }
     }
 
+    @Test func writesWindowsImages() async throws {
+        let scratch = try Scratch()
+        let archive = try await makeArchive(scratch, "a.wim", options: CompressionOptions(format: .wim))
+        var listing = try await engine.list(archive)
+        #expect(listing.info.type == "wim")
+        #expect(listing.paths.contains("Sample/docs/deep/notes.md"))
+        #expect(engine.editability(of: listing.info, at: archive) == .editable)
+        try await engine.delete(["Sample/run.sh"], from: archive, info: listing.info)
+        listing = try await engine.list(archive)
+        #expect(!listing.paths.contains("Sample/run.sh"))
+        #expect(try await engine.test(archive).isClean)
+    }
+
     @Test func splitsIntoVolumes() async throws {
         let scratch = try Scratch()
         let big = try scratch.file("big.bin", bytes: 700_000)

@@ -123,6 +123,20 @@ struct RarTests {
         #expect(try await engine.test(repaired).isClean)
     }
 
+    @Test func makesAnArchiveThatExtractsItself() async throws {
+        let scratch = try Scratch()
+        let file = try scratch.file("note.txt", "carried along")
+        var options = CompressionOptions(format: .rar)
+        options.selfExtracting = true
+        let result = try await engine.compress(CompressionJob(sources: [file], archive: scratch.path("carry.rar"), options: options))
+        #expect(result.output.lastPathComponent == "carry.sfx")
+        #expect(FileManager.default.isExecutableFile(atPath: result.output.path))
+        // It is a program with an archive at its end, and can be opened as one.
+        let listing = try await engine.list(result.output)
+        #expect(listing.paths == ["note.txt"])
+        #expect(listing.info.isSelfExtracting)
+    }
+
     @Test func splitsIntoVolumes() async throws {
         let scratch = try Scratch()
         try scratch.file("data/payload.bin", bytes: 900_000)

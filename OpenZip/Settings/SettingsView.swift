@@ -4,13 +4,15 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct SettingsView: View {
+    @State private var pane = Demo.value("--pane") ?? "general"
+
     var body: some View {
-        TabView {
-            Tab("General", systemImage: "gearshape") { GeneralPane() }
-            Tab("Extracting", systemImage: "square.and.arrow.down") { ExtractingPane() }
-            Tab("Finder", systemImage: "macwindow.on.rectangle") { FinderPane() }
-            Tab("RAR", systemImage: "books.vertical") { RarPane() }
-            Tab("About", systemImage: "info.circle") { AboutPane() }
+        TabView(selection: $pane) {
+            Tab("General", systemImage: "gearshape", value: "general") { GeneralPane() }
+            Tab("Extracting", systemImage: "square.and.arrow.down", value: "extracting") { ExtractingPane() }
+            Tab("Finder", systemImage: "macwindow.on.rectangle", value: "finder") { FinderPane() }
+            Tab("RAR", systemImage: "books.vertical", value: "rar") { RarPane() }
+            Tab("About", systemImage: "info.circle", value: "about") { AboutPane() }
         }
         .frame(width: 560)
     }

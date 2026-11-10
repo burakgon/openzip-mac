@@ -8,6 +8,7 @@ enum WindowRequest: Hashable {
     case archive(URL)
     case compress(UUID)
     case activity
+    case settings
 }
 
 /// What a "New Archive" window starts with.
@@ -62,7 +63,13 @@ final class AppModel {
 
     // MARK: Windows
 
+    /// Whether the app has shown a window since it started: an app that has is being
+    /// used, and stays when its background work is done.
+    @ObservationIgnored private(set) var hasShownWindow = false
+
     func open(_ request: WindowRequest) {
+        // The activity window is opened by the app, not by the user: it does not count.
+        if request != .activity { hasShownWindow = true }
         windowRequests.append(request)
     }
 

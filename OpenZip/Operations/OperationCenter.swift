@@ -36,7 +36,7 @@ final class BackgroundOperation: Identifiable {
 
     /// How long the rest will take, judged by how long it took so far.
     var remaining: String? {
-        guard isRunning, !isPaused, let fraction, fraction > 0.03 else { return nil }
+        guard isRunning, !isPaused, let fraction, fraction > 0.03, fraction < 0.995 else { return nil }
         let elapsed = Date().timeIntervalSince(started)
         guard elapsed > 3 else { return nil }
         return Formatting.remaining(elapsed * (1 - fraction) / fraction)
@@ -130,6 +130,7 @@ final class OperationCenter {
         case .running, .cancelled:
             break
         }
+        AppDelegate.shared?.quitIfOnlyStartedForBackgroundWork()
     }
 }
 

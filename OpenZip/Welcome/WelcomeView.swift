@@ -291,7 +291,7 @@ private struct OperationRow: View {
             if operation.isPaused { return "Paused" }
             var parts: [String] = []
             if let fraction = operation.fraction { parts.append(Formatting.percent(fraction)) }
-            if let remaining = operation.remaining { parts.append("about \(remaining) left") }
+            if let remaining = operation.remaining { parts.append(remaining) }
             if !operation.item.isEmpty { parts.append((operation.item as NSString).lastPathComponent) }
             return parts.isEmpty ? "Preparing…" : parts.joined(separator: " · ")
         }

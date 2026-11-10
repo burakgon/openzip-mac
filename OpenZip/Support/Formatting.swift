@@ -8,10 +8,10 @@ enum Formatting {
     /// and the percent sign in front that the region is used to. This is what macOS itself
     /// shows when its language is English and its region is not. Numbers and dates in the
     /// Mac's own language next to English words would read like a mistake.
-    static let locale = Locale(identifier: "en_\(Locale.current.region?.identifier ?? "US")")
+    static let locale = Locale(identifier: Demo.value("--locale") ?? "en_\(Locale.current.region?.identifier ?? "US")")
 
     static func bytes(_ count: UInt64) -> String {
-        Int64(clamping: count).formatted(.byteCount(style: .file).locale(locale))
+        Int64(clamping: count).formatted(.byteCount(style: .file, spellsOutZero: false).locale(locale))
     }
 
     static func count(_ value: Int, _ singular: String, _ plural: String? = nil) -> String {
@@ -55,14 +55,14 @@ enum Formatting {
         }
     }
 
-    /// "about 2 minutes", for the time an operation still needs.
+    /// "about 2 minutes left", for the time an operation still needs.
     static func remaining(_ seconds: TimeInterval) -> String {
-        if seconds < 5 { return "a few seconds" }
-        if seconds < 60 { return "\(Int(seconds / 5) * 5) seconds" }
+        if seconds < 5 { return "a few seconds left" }
+        if seconds < 60 { return "about \(Int(seconds / 5) * 5) seconds left" }
         let minutes = Int((seconds / 60).rounded())
-        if minutes < 60 { return count(minutes, "minute") }
+        if minutes < 60 { return "about \(count(minutes, "minute")) left" }
         let hours = minutes / 60
-        return "\(count(hours, "hour")) \(count(minutes % 60, "minute"))"
+        return "about \(count(hours, "hour")) \(count(minutes % 60, "minute")) left"
     }
 
     /// A location for people: "Downloads", "Desktop — Projects" with the home folder cut off.

@@ -145,7 +145,7 @@ struct ExtractSheet: View {
         self.selection = selection
         let settings = session.settings
         // Where the last extraction went, if that still exists; else next to the archive.
-        let last = settings.recentDestinations.first.map { URL(filePath: $0) }
+        let last = (Demo.value("--destination") ?? settings.recentDestinations.first).map { URL(filePath: $0) }
         let fallback = session.url.deletingLastPathComponent()
         _destination = State(initialValue: last.flatMap { FileManager.default.fileExists(atPath: $0.path) ? $0 : nil } ?? fallback)
         _folderChoice = State(initialValue: settings.folderChoice)

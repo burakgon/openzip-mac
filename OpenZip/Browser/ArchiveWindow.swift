@@ -486,7 +486,7 @@ private struct ActivityView: View {
             parts.append(Formatting.percent(fraction))
         }
         if let remaining = activity.remaining {
-            parts.append("about \(remaining) left")
+            parts.append(remaining)
         }
         if !activity.item.isEmpty {
             parts.append((activity.item as NSString).lastPathComponent)

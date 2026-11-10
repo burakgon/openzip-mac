@@ -7,8 +7,9 @@ import FinderSync
 /// to do with them, as an openzip: URL, and the app does it. That keeps the extension as
 /// small as macOS wants extensions to be, and all the code that touches archives in one place.
 ///
-/// The Finder calls an extension on the main thread without promising so, hence the
-/// `assumeIsolated` where menus are built.
+/// The Finder reaches an extension over XPC, on a queue of its own and not on the main
+/// thread. Menus are an AppKit matter and are built on the main thread, which the
+/// extension has and does nothing else with.
 nonisolated final class FinderSync: FIFinderSync {
     private enum Command: Int {
         case extractHere = 1, extractToFolder, extractTo, open, test
@@ -31,7 +32,15 @@ nonisolated final class FinderSync: FIFinderSync {
         guard menuKind == .contextualMenuForItems,
               let urls = FIFinderSyncController.default().selectedItemURLs(), !urls.isEmpty
         else { return nil }
-        return MainActor.assumeIsolated { Unchecked(Self.makeMenu(for: urls)) }.value
+        return Self.onMain { Unchecked(Self.makeMenu(for: urls)) }.value
+    }
+
+    /// Runs a piece of main-actor code from the queue the Finder calls on, and waits for it.
+    private static func onMain<Result: Sendable>(_ work: @MainActor () -> Result) -> Result {
+        if Thread.isMainThread {
+            return MainActor.assumeIsolated(work)
+        }
+        return DispatchQueue.main.sync { MainActor.assumeIsolated(work) }
     }
 
     @MainActor private static func makeMenu(for urls: [URL]) -> NSMenu {
@@ -69,7 +78,7 @@ nonisolated final class FinderSync: FIFinderSync {
 
     @objc private func performCommand(_ sender: NSMenuItem) {
         let item = Unchecked(sender)
-        let tag = MainActor.assumeIsolated { item.value.tag }
+        let tag = Self.onMain { item.value.tag }
         guard let command = Command(rawValue: tag),
               let urls = FIFinderSyncController.default().selectedItemURLs(), !urls.isEmpty
         else { return }

@@ -17,7 +17,7 @@ final class Activity {
     }
 
     var remaining: String? {
-        guard !isPaused, let fraction, fraction > 0.03 else { return nil }
+        guard !isPaused, let fraction, fraction > 0.03, fraction < 0.995 else { return nil }
         let elapsed = Date().timeIntervalSince(started)
         guard elapsed > 3 else { return nil }
         return Formatting.remaining(elapsed * (1 - fraction) / fraction)
@@ -379,10 +379,21 @@ final class ArchiveSession: Identifiable {
             return
         }
         NSWorkspace.shared.open(file)
-        guard canEdit || editability.canEdit else { return }
-        let modified = (try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? Date()
+        watch(file, for: id)
+    }
+
+    /// Remembers a file that was handed to another app, to notice when it is saved there.
+    func watch(_ file: URL, for id: Int) {
+        guard editability.canEdit else { return }
+        let node = tree[id]
+        let modified = Self.modificationDate(of: file) ?? Date()
         edited.removeAll { $0.url == file }
         edited.append(EditedFile(name: node.name, folderPath: tree.displayPath(of: node.parent), url: file, modified: modified))
+    }
+
+    /// Extracts a file for looking at, for the demo's steps.
+    func extractForDemo(_ id: Int) async -> URL? {
+        await extractForViewing(id)
     }
 
     /// Space: shows the selected file in Quick Look, or closes it.
@@ -410,13 +421,19 @@ final class ArchiveSession: Identifiable {
     func checkEditedFiles() {
         guard pendingUpdate == nil, !isBusy else { return }
         for (index, file) in edited.enumerated() {
-            guard let now = try? file.url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate else { continue }
+            guard let now = Self.modificationDate(of: file.url) else { continue }
             if now > file.modified.addingTimeInterval(0.5) {
                 edited[index].modified = now
                 pendingUpdate = edited[index]
                 return
             }
         }
+    }
+
+    /// When a file was last written. Asked of the file system each time: a URL remembers
+    /// what it was told once, and would never notice a change.
+    private static func modificationDate(of url: URL) -> Date? {
+        (try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
     }
 
     /// Puts a file that was changed in another app back into the archive.
@@ -504,7 +521,8 @@ final class ArchiveSession: Identifiable {
         // What is added to an encrypted archive is encrypted like the rest of it.
         let encrypting = newPassword ?? (listing.hasEncryptedEntries ? password : nil)
         options.encryptFileNames = listing.info.hasEncryptedHeaders
-        let job = CompressionJob(sources: urls, archive: url, folder: tree.displayPath(of: target), options: options, password: encrypting)
+        let targetPath = tree.displayPath(of: target)
+        let job = CompressionJob(sources: urls, archive: url, folder: targetPath, options: options, password: encrypting)
         let names = Set(urls.map(\.lastPathComponent))
 
         do {
@@ -515,9 +533,9 @@ final class ArchiveSession: Identifiable {
                 return try await engine.compress(job, control: control, progress: progress)
             }
             await reload()
-            // Show what was added.
-            if tree.contains(target), target < tree.nodes.count {
-                let added = tree[folder].children.filter { names.contains(tree[$0].name) }
+            // Show what was added, if the window is looking at where it went.
+            if currentPath == targetPath {
+                let added = rows.filter { names.contains(tree[$0].name) }
                 if !added.isEmpty { selection = Set(added) }
             }
             if result.report.warnings.isEmpty {
@@ -691,6 +709,11 @@ final class ArchiveSession: Identifiable {
         _ title: String,
         _ work: (ArchiveEngine, String?, OperationControl, @escaping ProgressHandler) async throws -> Result
     ) async throws -> Result {
+        // One thing at a time in a window: two operations on one archive would get in
+        // each other's way.
+        guard self.activity == nil else {
+            throw ArchiveError.failed("“\(self.title)” is busy. Try again when it is done.")
+        }
         let activity = Activity(title)
         self.activity = activity
         defer {

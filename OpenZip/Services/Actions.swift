@@ -358,12 +358,13 @@ enum ExternalActions {
         let value = { (name: String) in components.queryItems?.first { $0.name == name }?.value }
 
         // Opening an archive in a window harms nothing. Everything else writes to the
-        // disk, and a link on a web page must not be able to ask for that.
+        // disk: that is done at once for the Finder extension inside this app, and for
+        // anybody else, a link on a web page for example, only after asking.
         if components.host == "open" {
             paths.forEach { AppModel.shared.openArchive($0) }
             return
         }
-        guard isFromOwnExtension() else { return }
+        guard !paths.isEmpty, isFromOwnExtension() || confirm(components.host ?? "", paths) else { return }
 
         switch components.host {
         case "extract":
@@ -372,6 +373,7 @@ enum ExternalActions {
             if let format = value("format").flatMap(ArchiveFormat.init(rawValue:)) {
                 QuickActions.compress(paths, format: format)
             } else {
+                NSApp.activate()
                 AppModel.shared.newArchive(from: paths)
             }
         case "test":
@@ -381,15 +383,42 @@ enum ExternalActions {
         }
     }
 
-    /// Whether the URL being handled was sent by the Finder extension inside this app.
+    /// Whether the URL being handled was sent by the Finder extension inside this app:
+    /// by a program, that is, that lives in this app's own folder of extensions.
     private static func isFromOwnExtension() -> Bool {
         if Demo.isEnabled { return true }
+        guard let sender = senderPath() else { return false }
+        let plugIns = Bundle.main.bundleURL.appending(path: "Contents/PlugIns").resolvingSymlinksInPath().path
+        return URL(filePath: sender).resolvingSymlinksInPath().path.hasPrefix(plugIns + "/")
+    }
+
+    /// Where the program that sent the Apple event being handled is on disk.
+    private static func senderPath() -> String? {
         guard let event = NSAppleEventManager.shared().currentAppleEvent,
-              let pid = event.attributeDescriptor(forKeyword: keySenderPIDAttr)?.int32Value,
-              let sender = NSRunningApplication(processIdentifier: pid),
-              let location = sender.bundleURL?.standardizedFileURL.path
-        else { return false }
-        let plugIns = Bundle.main.bundleURL.appending(path: "Contents/PlugIns").standardizedFileURL.path
-        return location.hasPrefix(plugIns + "/") || sender.bundleIdentifier == Bundle.main.bundleIdentifier
+              let pid = event.attributeDescriptor(forKeyword: keySenderPIDAttr)?.int32Value, pid > 0
+        else { return nil }
+        var buffer = [CChar](repeating: 0, count: 4 * Int(MAXPATHLEN))
+        guard proc_pidpath(pid, &buffer, UInt32(buffer.count)) > 0 else { return nil }
+        return String(decoding: buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }, as: UTF8.self)
+    }
+
+    /// Asks whether to do what somebody other than the Finder extension asked for.
+    private static func confirm(_ command: String, _ paths: [URL]) -> Bool {
+        let what: String
+        switch command {
+        case "extract": what = "extract"
+        case "compress": what = "compress"
+        case "test": what = "test"
+        default: return false
+        }
+        let subject = paths.count == 1 ? "“\(paths[0].lastPathComponent)”" : "\(paths.count) items"
+        let sender = senderPath().map { URL(filePath: $0).deletingPathExtension().lastPathComponent } ?? "Another app"
+        let alert = NSAlert()
+        alert.messageText = "\(sender) asks OpenZip to \(what) \(subject)"
+        alert.informativeText = paths.prefix(6).map(\.path).joined(separator: "\n") + (paths.count > 6 ? "\n…" : "")
+        alert.addButton(withTitle: what.prefix(1).uppercased() + what.dropFirst())
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate()
+        return alert.runModal() == .alertFirstButtonReturn
     }
 }

@@ -46,6 +46,7 @@ final class CompressModel {
             name = CompressPlan.suggestedName(for: draft.sources)
             folder = draft.sources.first?.deletingLastPathComponent() ?? FileManager.default.homeDirectoryForCurrentUser
         }
+        if let staged = Demo.value("--where") { folder = URL(filePath: staged) }
         fit()
         // A new archive starts with a name that is free. Adding to an existing archive is
         // possible, by choosing its name, and never happens by accident.
@@ -174,7 +175,21 @@ struct CompressView: View {
         }
         .onAppear {
             guard model == nil, let draftID, let draft = AppModel.shared.drafts[draftID] else { return }
-            model = CompressModel(draft: draft)
+            let created = CompressModel(draft: draft)
+            model = created
+            // The demo can press Create itself: --to 7z --auto.
+            if Demo.isEnabled, Demo.arguments.contains("--auto") {
+                if let format = Demo.value("--to").flatMap(ArchiveFormat.init(rawValue:)) {
+                    created.options.format = format
+                    created.fit()
+                }
+                if let password = Demo.value("--new-password") {
+                    created.password = password
+                    created.verification = password
+                }
+                created.start()
+                dismiss()
+            }
         }
         .onDisappear {
             if let draftID { AppModel.shared.drafts[draftID] = nil }

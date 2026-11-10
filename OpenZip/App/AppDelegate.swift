@@ -2,10 +2,14 @@ import AppKit
 import OpenZipKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// The delegate itself. `NSApp.delegate` is not it: SwiftUI puts its own in front.
+    private(set) static weak var shared: AppDelegate?
+
     /// Whether the app was started, or woken, to open something.
     private var wasAskedToOpen = false
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        Self.shared = self
         // A tool that exits before it read what it was sent must not take the app with it.
         signal(SIGPIPE, SIG_IGN)
     }
@@ -25,6 +29,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func application(_ application: NSApplication, open urls: [URL]) {
         wasAskedToOpen = true
         ExternalActions.handle(urls)
+    }
+
+    /// Called when a background operation ends. An app that was only started to extract
+    /// or pack something from the Finder has nothing left to do then: it leaves, as the
+    /// system's own unarchiver does. Not if something went wrong, which has to be read.
+    func quitIfOnlyStartedForBackgroundWork() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            let app = AppModel.shared
+            let failed = app.operations.operations.contains { if case .failed = $0.state { true } else { false } }
+            let otherWindows = NSApp.windows.contains { $0.isVisible && $0.canBecomeMain && $0.title != "Activity" }
+            guard app.operations.running.isEmpty, app.windowRequests.isEmpty, !failed, !otherWindows, !app.hasShownWindow else { return }
+            NSApp.terminate(nil)
+        }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {

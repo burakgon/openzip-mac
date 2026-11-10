@@ -79,8 +79,13 @@ extension ArchiveEngine {
 
     /// The file a job leaves behind: the archive, or the first of its volumes.
     static func output(of job: CompressionJob) -> URL {
-        guard job.options.volumeSize != nil, job.options.format.supportsVolumes else { return job.archive }
         let files = FileManager.default
+        if job.options.selfExtracting, job.options.format == .rar {
+            // rar names a self-extracting archive "name.sfx".
+            let program = job.archive.deletingPathExtension().appendingPathExtension("sfx")
+            if files.fileExists(atPath: program.path) { return program }
+        }
+        guard job.options.volumeSize != nil, job.options.format.supportsVolumes else { return job.archive }
         if job.options.format == .rar {
             // "name.part1.rar", or with more digits when there are ten volumes or more.
             let base = job.archive.deletingPathExtension()

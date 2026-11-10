@@ -151,11 +151,17 @@ struct FileTable: NSViewRepresentable {
 
         let session: ArchiveSession
         weak var table: FileTableView?
-        /// The rows the table is showing: the session's, as of the last reload.
+        /// What the table is showing: the session's rows, tree and entries as of the last
+        /// reload. The table is asked for its cells at moments of its own choosing, also
+        /// between an archive being read again and the list being told; with its own
+        /// copies it never looks up an old row in a new tree.
         private var rows: [Int] = []
+        private var tree = ArchiveTree()
+        private var entries: [ArchiveEntry] = []
         private var appliedVersion = -1
         private var appliedSelection: Set<Int> = []
         private var isApplyingSelection = false
+        private var didTakeFocus = false
         private var drags: [UUID: DragExtraction] = [:]
         private var currentDrag = UUID()
         private var draggedIDs: [Int] = []
@@ -165,8 +171,31 @@ struct FileTable: NSViewRepresentable {
             return queue
         }()
 
+        /// The list of the window that was opened last, for the demo's steps.
+        static weak var latest: Coordinator?
+
         init(session: ArchiveSession) {
             self.session = session
+            super.init()
+            Self.latest = self
+        }
+
+        /// Keeps the promises a drag of these nodes into a folder would make, the way the
+        /// Finder would ask for them. For trying the path a drag takes without a mouse.
+        func keepPromises(for ids: [Int], in folder: URL) async -> [String] {
+            let drag = UUID()
+            drags[drag] = DragExtraction(ids: ids)
+            var results: [String] = []
+            for id in ids {
+                let name = session.tree[id].name
+                do {
+                    try await fulfill(PromisedNode(id: id, name: name, drag: drag), at: folder.appending(path: name))
+                    results.append("kept \(name)")
+                } catch {
+                    results.append("failed \(name): \(error.localizedDescription)")
+                }
+            }
+            return results
         }
 
         func sync(version: Int, selection: Set<Int>, renameRequest: Int?) {
@@ -174,11 +203,22 @@ struct FileTable: NSViewRepresentable {
             if version != appliedVersion {
                 appliedVersion = version
                 rows = session.rows
+                tree = session.tree
+                entries = session.listing.entries
                 appliedSelection = []
                 table.reloadData()
                 isApplyingSelection = true
                 table.deselectAll(nil)
                 isApplyingSelection = false
+                if !didTakeFocus {
+                    // The list is what a new window is about: arrow keys, typing a name and
+                    // Space work at once, without a click to wake it.
+                    didTakeFocus = true
+                    DispatchQueue.main.async {
+                        guard let window = table.window, window.firstResponder === window || window.firstResponder == nil else { return }
+                        window.makeFirstResponder(table)
+                    }
+                }
             }
             if selection != appliedSelection {
                 appliedSelection = selection
@@ -208,8 +248,8 @@ struct FileTable: NSViewRepresentable {
 
         func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
             guard let tableColumn, let column = Column(rawValue: tableColumn.identifier.rawValue), row < rows.count else { return nil }
-            let node = session.tree[rows[row]]
-            let entry = node.entry.map { session.listing.entries[$0] }
+            let node = tree[rows[row]]
+            let entry = node.entry.flatMap { $0 < entries.count ? entries[$0] : nil }
 
             if column == .name {
                 let cell = tableView.makeView(withIdentifier: column.identifier, owner: nil) as? NameCell ?? NameCell(identifier: column.identifier)
@@ -220,7 +260,7 @@ struct FileTable: NSViewRepresentable {
                 cell.setBadges(isEncrypted: node.isEncrypted, isLink: node.isSymbolicLink)
                 // In a search or a flat list, files of the same name come from different
                 // folders: the tooltip says which.
-                cell.toolTip = session.isSearching || session.isFlat ? session.tree.displayPath(of: node.id) : nil
+                cell.toolTip = session.isSearching || session.isFlat ? tree.displayPath(of: node.id) : nil
                 return cell
             }
 
@@ -244,7 +284,7 @@ struct FileTable: NSViewRepresentable {
         }
 
         func tableView(_ tableView: NSTableView, typeSelectStringFor tableColumn: NSTableColumn?, row: Int) -> String? {
-            row < rows.count ? session.tree[rows[row]].name : nil
+            row < rows.count ? tree[rows[row]].name : nil
         }
 
         func tableViewSelectionDidChange(_ notification: Notification) {
@@ -299,7 +339,7 @@ struct FileTable: NSViewRepresentable {
         // MARK: Renaming
 
         func beginRenaming(_ id: Int) {
-            guard session.canEdit, let table, let row = rows.firstIndex(of: id) else { return }
+            guard session.canEdit, session.tree.contains(id), let table, let row = rows.firstIndex(of: id) else { return }
             let column = table.column(withIdentifier: Column.name.identifier)
             guard column >= 0 else { return }
             table.selectRowIndexes([row], byExtendingSelection: false)
@@ -319,7 +359,7 @@ struct FileTable: NSViewRepresentable {
             let row = table.row(for: field)
             guard row >= 0, row < rows.count else { return }
             let id = rows[row]
-            let old = session.tree[id].name
+            let old = tree[id].name
             let new = field.stringValue
             guard new != old else { return }
             // Until the archive has been rewritten the list still shows the old name.
@@ -411,8 +451,10 @@ struct FileTable: NSViewRepresentable {
         // MARK: Dragging out
 
         func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> NSPasteboardWriting? {
-            guard row < rows.count, session.isReady else { return nil }
-            let node = session.tree[rows[row]]
+            // Nothing is promised while the window is busy: the promise could not be kept
+            // before the other operation is over.
+            guard row < rows.count, session.isReady, !session.isBusy else { return nil }
+            let node = tree[rows[row]]
             let ext = (node.name as NSString).pathExtension
             let type: UTType = node.isDirectory ? .folder : (UTType(filenameExtension: ext) ?? .data)
             let provider = NodePromiseProvider(fileType: type.identifier, delegate: self)
@@ -487,7 +529,7 @@ struct FileTable: NSViewRepresentable {
         func tableView(_ tableView: NSTableView, validateDrop info: NSDraggingInfo, proposedRow row: Int, proposedDropOperation dropOperation: NSTableView.DropOperation) -> NSDragOperation {
             guard session.canEdit else { return [] }
             let isOwn = (info.draggingSource as? NSTableView) === tableView
-            let onFolder = dropOperation == .on && row >= 0 && row < rows.count && session.tree[rows[row]].isDirectory
+            let onFolder = dropOperation == .on && row >= 0 && row < rows.count && tree[rows[row]].isDirectory
             if isOwn {
                 // Items of this archive can be moved into one of its folders.
                 guard onFolder, !draggedIDs.contains(rows[row]) else { return [] }

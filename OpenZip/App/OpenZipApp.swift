@@ -13,6 +13,7 @@ struct OpenZipApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
+    @Environment(\.openSettings) private var openSettings
     @State private var app = AppModel.shared
 
     var body: some Scene {
@@ -59,6 +60,7 @@ struct OpenZipApp: App {
                 .environment(\.locale, Formatting.locale)
         }
         .windowResizability(.contentSize)
+        .defaultSize(width: 440, height: 230)
         .defaultPosition(.topTrailing)
         .restorationBehavior(.disabled)
         .handlesExternalEvents(matching: [])
@@ -82,6 +84,8 @@ struct OpenZipApp: App {
             dismissWindow(id: WindowID.welcome)
         case .activity:
             openWindow(id: WindowID.activity)
+        case .settings:
+            openSettings()
         }
     }
 }

@@ -1,0 +1,39 @@
+# Tests the kit and builds the app for every push and pull request.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Test and build
+    runs-on: xcode-27
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Use the newest Xcode
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | grep -v -i -e beta -e release_candidate | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+          swift --version
+
+      # The engine of the app, built from 7-Zip's own source. The tests run it.
+      - name: Build 7-Zip
+        run: scripts/build-7zz.sh
+
+      - name: Test OpenZipKit
+        run: swift test --package-path Packages/OpenZipKit
+
+      - name: Build the app
+        run: |
+          xcodebuild build -quiet -project OpenZip.xcodeproj -scheme OpenZip \
+            -configuration Debug -derivedDataPath build/DerivedData \
+            -destination "generic/platform=macOS" CODE_SIGNING_ALLOWED=NO

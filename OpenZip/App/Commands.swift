@@ -26,10 +26,15 @@ struct AppCommands: Commands {
 
         CommandGroup(after: .saveItem) {
             Divider()
+            Button("Read Again") {
+                if let session { Task { await session.reload() } }
+            }
+            .keyboardShortcut("r")
+            .disabled(session?.isReady != true || session?.isBusy == true)
             Button("Show in Finder") {
                 if let session { NSWorkspace.shared.activateFileViewerSelecting([session.url]) }
             }
-            .keyboardShortcut("r")
+            .keyboardShortcut("r", modifiers: [.command, .option])
             .disabled(session == nil)
         }
 

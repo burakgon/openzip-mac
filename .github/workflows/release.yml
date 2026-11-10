@@ -1,0 +1,124 @@
+# Publishes a release when a version tag is pushed:
+#
+#   edit Config/Version.xcconfig and add a "## 1.1.0" section to CHANGELOG.md
+#   git commit -am "OpenZip 1.1.0" && git tag v1.1.0 && git push origin main v1.1.0
+#
+# The app is signed with Developer ID, notarized and attached to the GitHub release
+# together with its appcast; installed copies then offer the update. Run it by hand
+# (Actions → Release → Run workflow) to build and notarize without publishing.
+#
+# Secrets:
+#   ASC_KEY_BASE64, ASC_KEY_ID, ASC_ISSUER_ID   an App Store Connect API key with access to
+#                                               cloud-managed Developer ID certificates. It
+#                                               signs the app and notarizes it.
+#   SPARKLE_PRIVATE_KEY                         the key that signs updates, as exported by
+#                                               Sparkle's `generate_keys -x`
+#   DEVELOPER_ID_P12_BASE64, DEVELOPER_ID_P12_PASSWORD   optional: a Developer ID certificate
+#                                               to sign with instead of signing in the cloud
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+
+jobs:
+  release:
+    runs-on: xcode-27
+    timeout-minutes: 90
+    env:
+      PUBLISH: ${{ startsWith(github.ref, 'refs/tags/v') && '--publish' || '' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Use the newest Xcode
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | grep -v -i -e beta -e release_candidate | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+
+      - name: Check the tag
+        if: env.PUBLISH != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(sed -n 's/^MARKETING_VERSION = //p' Config/Version.xcconfig)
+          if [[ "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match the version in Config/Version.xcconfig ($version)"
+            exit 1
+          fi
+          # scripts/release.sh --publish, run on a Mac, creates the tag together with the
+          # release. Then there is nothing left to do here.
+          if gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "::notice::$GITHUB_REF_NAME is already published"
+            echo "ALREADY_PUBLISHED=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Test
+        if: env.ALREADY_PUBLISHED != '1'
+        run: |
+          scripts/build-7zz.sh
+          swift test --package-path Packages/OpenZipKit
+
+      - name: Signing credentials
+        if: env.ALREADY_PUBLISHED != '1'
+        env:
+          KEY: ${{ secrets.ASC_KEY_BASE64 }}
+          P12: ${{ secrets.DEVELOPER_ID_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+        run: |
+          if [[ -z "$KEY" ]]; then
+            echo "::error::Add the ASC_KEY_BASE64, ASC_KEY_ID and ASC_ISSUER_ID secrets"
+            exit 1
+          fi
+          printf '%s' "$KEY" | base64 --decode > "$RUNNER_TEMP/AuthKey.p8"
+          echo "ASC_KEY_PATH=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_ENV"
+          echo "NOTARY_KEY_PATH=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_ENV"
+
+          if [[ -n "$P12" ]]; then
+            keychain="$RUNNER_TEMP/signing.keychain-db"
+            password=$(openssl rand -hex 24)
+            security create-keychain -p "$password" "$keychain"
+            security set-keychain-settings -lut 21600 "$keychain"
+            security unlock-keychain -p "$password" "$keychain"
+            printf '%s' "$P12" | base64 --decode > "$RUNNER_TEMP/developer-id.p12"
+            security import "$RUNNER_TEMP/developer-id.p12" -k "$keychain" -f pkcs12 -P "$P12_PASSWORD" -T /usr/bin/codesign
+            rm "$RUNNER_TEMP/developer-id.p12"
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$password" "$keychain" > /dev/null
+            security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          fi
+
+      - name: Build, notarize and publish
+        if: env.ALREADY_PUBLISHED != '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          NOTARY_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: scripts/release.sh $PUBLISH
+
+      - uses: actions/upload-artifact@v7
+        if: env.ALREADY_PUBLISHED != '1'
+        with:
+          name: OpenZip
+          path: |
+            build/release/OpenZip.dmg
+            build/release/OpenZip.zip
+            build/release/appcast.xml
+            build/release/checksums.txt
+          if-no-files-found: error
+
+      - name: Clean up
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/AuthKey.p8"

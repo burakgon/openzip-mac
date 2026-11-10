@@ -14,7 +14,7 @@ enum Demo {
         arguments.contains("--demo")
     }
 
-    private static func value(_ name: String) -> String? {
+    static func value(_ name: String) -> String? {
         guard let index = arguments.firstIndex(of: name), index + 1 < arguments.count else { return nil }
         return arguments[index + 1]
     }
@@ -32,6 +32,9 @@ enum Demo {
         for path in values("--open") {
             AppModel.shared.openArchive(URL(filePath: path))
         }
+        if let archive = value("--convert") {
+            AppModel.shared.convert(URL(filePath: archive), password: value("--password"))
+        }
         let sources = values("--compress").map { URL(filePath: $0) }
         if !sources.isEmpty {
             AppModel.shared.newArchive(from: sources)
@@ -43,9 +46,7 @@ enum Demo {
             AppModel.shared.open(.activity)
         }
         if arguments.contains("--settings") {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-            }
+            AppModel.shared.open(.settings)
         }
         // For pictures the window has to be the one in front, whatever started the app.
         NSApp.perform(NSSelectorFromString("activateIgnoringOtherApps:"), with: true)
@@ -54,6 +55,7 @@ enum Demo {
     /// What to show in an archive window once its archive is read.
     static func stage(_ session: ArchiveSession) {
         guard isEnabled else { return }
+        NSApp.perform(NSSelectorFromString("activateIgnoringOtherApps:"), with: true)
         if let folder = value("--folder"), let id = session.tree.node(atDisplayPath: folder) {
             session.navigate(to: id)
         }
@@ -62,6 +64,9 @@ enum Demo {
             session.selection = Set(session.rows.filter { names.contains(session.tree[$0].name) })
         }
         if arguments.contains("--flat") { session.isFlat = true }
+        if let size = value("--size")?.split(separator: "x").compactMap({ Double($0) }), size.count == 2 {
+            NSApp.windows.first { $0.isVisible && $0.canBecomeMain }?.setContentSize(NSSize(width: size[0], height: size[1]))
+        }
         if let query = value("--search") { session.searchText = query }
         switch value("--sheet") {
         case "extract": session.sheet = .extract(selection: session.selection.isEmpty ? nil : session.selectedRoots)
@@ -110,12 +115,41 @@ enum Demo {
                 await session.setComment(argument)
             case "test":
                 await session.test()
+            case "preview":
+                await session.updatePreview(force: true)
+            case "move":
+                if let target = session.rows.first(where: { session.tree[$0].name == argument }) {
+                    await session.move(session.selectedRoots.filter { $0 != target }, to: target)
+                }
+            case "edit":
+                // What happens when a file is opened in another app and saved there,
+                // without the other app: the extracted copy is changed behind its back.
+                if let id = session.selectedRows.first, let file = await session.extractForDemo(id) {
+                    session.watch(file, for: id)
+                    try? Data(argument.utf8).write(to: file)
+                    try? FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(5)], ofItemAtPath: file.path)
+                    session.checkEditedFiles()
+                    if let pending = session.pendingUpdate {
+                        session.pendingUpdate = nil
+                        await session.updateArchive(with: pending)
+                    } else {
+                        print("the change was not noticed")
+                    }
+                }
+            case "promise":
+                let ids = session.selectedRoots
+                let kept = await FileTable.Coordinator.latest?.keepPromises(for: ids, in: URL(filePath: argument)) ?? ["no list"]
+                print("PROMISES: \(kept.joined(separator: ", "))")
+            case "extractAsking":
+                let options = ExtractOptions(destination: URL(filePath: argument), folderChoice: .never, conflictPolicy: .ask, reveal: false)
+                Task { await session.extract(session.selection.isEmpty ? nil : session.selectedRoots, options: options) }
             case "wait":
                 try? await Task.sleep(for: .seconds(Double(argument) ?? 1))
             case "quit":
                 // What the window has to say goes to the log first, for the script to read.
                 print("NOTICE: \(session.notice?.text ?? "-")")
                 print("ROWS: \(session.rows.map { session.tree[$0].name }.joined(separator: "|"))")
+                print("WINDOWS: \(NSApp.windows.filter { $0.isVisible && $0.canBecomeMain }.map(\.title).sorted().joined(separator: "|"))")
                 fflush(stdout)
                 NSApp.terminate(nil)
             default:

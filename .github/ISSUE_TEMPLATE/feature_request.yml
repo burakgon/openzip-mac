@@ -1,0 +1,10 @@
+name: Feature request
+description: An idea that would make OpenZip better
+labels: [enhancement]
+body:
+  - type: textarea
+    attributes:
+      label: What would you like to be able to do?
+      description: Describe the situation you are in rather than a solution. It is the fastest way to a good one.
+    validations:
+      required: true
