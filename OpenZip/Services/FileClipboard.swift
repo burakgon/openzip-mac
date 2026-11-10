@@ -7,6 +7,11 @@ import AppKit
 /// That folder stays until something else is copied out of an archive, and after the app
 /// has quit for as long as the clipboard still points to it: what was copied can be
 /// pasted then too.
+///
+/// What is on the clipboard is only ever read when the user pastes. macOS asks the user
+/// for permission when an app reads the clipboard on its own, and rightly so; whether
+/// the clipboard has moved on is told from its count of changes, which says nothing
+/// about what is on it.
 enum FileClipboard {
     /// The clipboard. The demo can use one of its own instead, so that trying this from a
     /// script does not replace what its user has copied: --pasteboard name.
@@ -20,6 +25,14 @@ enum FileClipboard {
     private static let prefix = "OpenZip-Clipboard-"
     /// The folder with the files that are on the clipboard now.
     private static var current: URL?
+    /// Where the name of that folder and the clipboard's count of changes are kept from
+    /// one start of the app to the next. The count starts over when the Mac does.
+    private static var folderKey: String { "clipboardFolder" + keySuffix }
+    private static var countKey: String { "clipboardChangeCount" + keySuffix }
+    /// The demo's own clipboard is remembered apart from the real one.
+    private static var keySuffix: String {
+        pasteboard === NSPasteboard.general ? "" : "." + pasteboard.name.rawValue
+    }
 
     /// A new folder to extract into.
     static func makeFolder() throws -> URL {
@@ -54,27 +67,39 @@ enum FileClipboard {
         })
         if let current, current != folder { try? FileManager.default.removeItem(at: current) }
         current = folder
+        UserDefaults.standard.set(folder.lastPathComponent, forKey: folderKey)
+        UserDefaults.standard.set(pasteboard.changeCount, forKey: countKey)
     }
 
-    /// The files on the clipboard that exist.
+    /// The files on the clipboard that exist. This reads the clipboard: it is for the
+    /// moment the user pastes, and for that moment only.
     static var files: [URL] {
         let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
         return urls.filter { FileManager.default.fileExists(atPath: $0.path) }
     }
 
+    /// Whether there are files to paste, told from the kinds of things on the clipboard
+    /// without reading them.
     static var hasFiles: Bool {
         pasteboard.canReadObject(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])
     }
 
-    /// Removes the folders that earlier copies left behind, except one the clipboard still
-    /// points to. Called when the app starts.
+    /// Removes the folders that earlier copies left behind, except the one that is still
+    /// on the clipboard: the one written last, if nothing has been copied since. Called
+    /// when the app starts.
     static func removeLeftovers() {
+        let defaults = UserDefaults.standard
+        var kept: String?
+        if let name = defaults.string(forKey: folderKey), defaults.integer(forKey: countKey) == pasteboard.changeCount {
+            kept = name
+        } else {
+            defaults.removeObject(forKey: folderKey)
+            defaults.removeObject(forKey: countKey)
+        }
         let temporary = FileManager.default.temporaryDirectory
-        let inUse = Set(files.map { $0.resolvingSymlinksInPath().path })
         for name in (try? FileManager.default.contentsOfDirectory(atPath: temporary.path)) ?? [] where name.hasPrefix(prefix) {
             let folder = temporary.appending(path: name, directoryHint: .isDirectory)
-            let base = folder.resolvingSymlinksInPath().path + "/"
-            if inUse.contains(where: { $0.hasPrefix(base) }) {
+            if name == kept {
                 current = folder
             } else {
                 try? FileManager.default.removeItem(at: folder)

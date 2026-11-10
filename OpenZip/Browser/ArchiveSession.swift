@@ -584,9 +584,9 @@ final class ArchiveSession: Identifiable {
         return alert.runModal() == .alertFirstButtonReturn
     }
 
-    /// Edit → Paste: the files on the clipboard go into the folder the window shows.
-    func pasteFiles() async {
-        let files = FileClipboard.files
+    /// Edit → Paste: files from the clipboard go into the folder the window shows. They
+    /// are read from the clipboard by whoever was asked to paste, in that very moment.
+    func paste(_ files: [URL]) async {
         guard canEdit, !files.isEmpty else { return }
         await add(files, into: nil, options: nil, password: nil)
     }

@@ -55,7 +55,7 @@ struct FileTable: NSViewRepresentable {
         table.onKey = { [weak coordinator] event in coordinator?.handleKey(event) ?? false }
         table.onMoveToWindow = { [weak coordinator] in coordinator?.takeFocus() }
         table.onCopy = { [session] in Task { await session.copySelection() } }
-        table.onPaste = { [session] in Task { await session.pasteFiles() } }
+        table.onPaste = { [session] files in Task { await session.paste(files) } }
         table.canPaste = { [session] in session.canPaste }
         table.menu = NSMenu()
         table.menu?.delegate = coordinator
@@ -433,9 +433,11 @@ struct FileTable: NSViewRepresentable {
                 add("Select All", "checklist") { [session] in session.selectAll() }
             }
             menu.addItem(.separator())
-            add("Paste", "doc.on.clipboard", enabled: session.canPaste) { [session] in
-                Task { await session.pasteFiles() }
-            }
+            // The standard Paste, sent to the list: the same as the one in the Edit menu.
+            let paste = NSMenuItem(title: "Paste", action: #selector(FileTableView.paste(_:)), keyEquivalent: "")
+            paste.target = table
+            paste.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: nil)
+            menu.addItem(paste)
             add("New Folder", "folder.badge.plus", enabled: session.canEdit) { [session] in
                 session.sheet = .newFolder
             }
@@ -630,15 +632,17 @@ final class FileTableView: NSTableView {
     var onKey: ((NSEvent) -> Bool)?
     /// What Edit → Copy and Edit → Paste do. The table only knows that it was asked.
     var onCopy: (() -> Void)?
-    var onPaste: (() -> Void)?
+    var onPaste: (([URL]) -> Void)?
     var canPaste: (() -> Bool)?
 
     @objc func copy(_ sender: Any?) {
         onCopy?()
     }
 
+    /// The clipboard is read here and now, while the user's Paste is being carried out:
+    /// that is the moment macOS lets an app read it without asking.
     @objc func paste(_ sender: Any?) {
-        onPaste?()
+        onPaste?(FileClipboard.files)
     }
 
     override func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {

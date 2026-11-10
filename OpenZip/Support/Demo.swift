@@ -173,7 +173,7 @@ enum Demo {
             case "copy":
                 await session.copySelection(askingAboutSize: false)
             case "paste":
-                await session.pasteFiles()
+                await session.paste(FileClipboard.files)
             case "send":
                 // What a menu item does: an action sent to whoever has the focus.
                 let handled = NSApp.sendAction(Selector(argument + ":"), to: nil, from: nil)
