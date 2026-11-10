@@ -1,0 +1,41 @@
+// Settings shared by every target and configuration. Kept here rather than in the project
+// file so that they are readable and diff well.
+#include "Version.xcconfig"
+
+SDKROOT = macosx
+MACOSX_DEPLOYMENT_TARGET = 26.0
+SUPPORTED_PLATFORMS = macosx
+
+SWIFT_VERSION = 6.0
+SWIFT_APPROACHABLE_CONCURRENCY = YES
+SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor
+SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES
+
+GENERATE_INFOPLIST_FILE = NO
+LOCALIZATION_PREFERS_STRING_CATALOGS = YES
+COMBINE_HIDPI_IMAGES = YES
+
+ENABLE_HARDENED_RUNTIME = YES
+DEAD_CODE_STRIPPING = YES
+
+CLANG_ENABLE_MODULES = YES
+CLANG_ENABLE_OBJC_ARC = YES
+GCC_NO_COMMON_BLOCKS = YES
+ALWAYS_SEARCH_USER_PATHS = NO
+
+// The public half of the key that signs updates. Sparkle refuses an update that was not
+// signed with the matching private key, which is not in this repository.
+SPARKLE_PUBLIC_ED_KEY =
+
+// Anyone can build and run the app without an Apple developer account: by default it is
+// signed ad hoc. To sign with your own identity, which the Finder extension needs to be
+// loaded by macOS, create Config/Local.xcconfig (it is ignored by git) with for example:
+//
+//   CODE_SIGN_IDENTITY = Apple Development
+//   DEVELOPMENT_TEAM = ABCDE12345
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+PROVISIONING_PROFILE_SPECIFIER =
+
+#include? "Local.xcconfig"

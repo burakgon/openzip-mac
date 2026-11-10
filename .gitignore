@@ -1,0 +1,30 @@
+# Build output
+build/
+.build/
+DerivedData/
+*.xcarchive
+*.dSYM
+*.dSYM.zip
+
+# 7-Zip, built from its source by scripts/build-7zz.sh
+Vendor/
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad
+
+# Signing settings of whoever builds: see Config/Base.xcconfig
+Config/Local.xcconfig
+
+# Secrets must never be committed
+*.p8
+*.p12
+*.pem
+sparkle_private_key*
+
+# macOS
+.DS_Store
+
+# Profiling data
+*.profraw

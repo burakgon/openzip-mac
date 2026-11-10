@@ -1,0 +1,3 @@
+// The version of the app. scripts/release.sh reads these.
+MARKETING_VERSION = 1.0.0
+CURRENT_PROJECT_VERSION = 1

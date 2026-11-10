@@ -1,0 +1,4 @@
+/* OpenZip is in English. This file is what tells macOS so: with it, the menus and panels
+   the system provides are in English too, instead of in the language of the Mac next to
+   an app that does not speak it. */
+"CFBundleDisplayName" = "OpenZip";

@@ -1,0 +1,425 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0Z0000000000000000000B01 /* OpenZipKit in Frameworks */ = {isa = PBXBuildFile; productRef = 0Z0000000000000000000D01 /* OpenZipKit */; };
+		0Z0000000000000000000B02 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 0Z0000000000000000000D02 /* Sparkle */; };
+		0Z0000000000000000000B03 /* OpenZipFinder.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0Z0000000000000000000F02 /* OpenZipFinder.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		0Z0000000000000000000B04 /* 7zz in Copy Helpers */ = {isa = PBXBuildFile; fileRef = 0Z0000000000000000000F12 /* 7zz */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		0Z0000000000000000000B05 /* 7-Zip License.txt in Resources */ = {isa = PBXBuildFile; fileRef = 0Z0000000000000000000F13 /* 7-Zip License.txt */; };
+		0Z0000000000000000000B06 /* 7-Zip unRAR License.txt in Resources */ = {isa = PBXBuildFile; fileRef = 0Z0000000000000000000F14 /* 7-Zip unRAR License.txt */; };
+		0Z0000000000000000000B07 /* 7-Zip LGPL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 0Z0000000000000000000F15 /* 7-Zip LGPL.txt */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		0Z0000000000000000000601 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0Z0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0Z0000000000000000000202;
+			remoteInfo = OpenZipFinder;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		0Z0000000000000000000E04 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				0Z0000000000000000000B03 /* OpenZipFinder.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0Z0000000000000000000E05 /* Copy Helpers */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = Contents/Helpers;
+			dstSubfolderSpec = 1;
+			files = (
+				0Z0000000000000000000B04 /* 7zz in Copy Helpers */,
+			);
+			name = "Copy Helpers";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		0Z0000000000000000000F01 /* OpenZip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenZip.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0Z0000000000000000000F02 /* OpenZipFinder.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = OpenZipFinder.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		0Z0000000000000000000F03 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
+		0Z0000000000000000000F04 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		0Z0000000000000000000F05 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		0Z0000000000000000000F06 /* Version.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Version.xcconfig; sourceTree = "<group>"; };
+		0Z0000000000000000000F07 /* App.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = App.xcconfig; sourceTree = "<group>"; };
+		0Z0000000000000000000F08 /* FinderExtension.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = FinderExtension.xcconfig; sourceTree = "<group>"; };
+		0Z0000000000000000000F09 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		0Z0000000000000000000F10 /* FinderExtension-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "FinderExtension-Info.plist"; sourceTree = "<group>"; };
+		0Z0000000000000000000F11 /* FinderExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FinderExtension.entitlements; sourceTree = "<group>"; };
+		0Z0000000000000000000F12 /* 7zz */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = 7zz; sourceTree = "<group>"; };
+		0Z0000000000000000000F13 /* 7-Zip License.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "7-Zip License.txt"; sourceTree = "<group>"; };
+		0Z0000000000000000000F14 /* 7-Zip unRAR License.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "7-Zip unRAR License.txt"; sourceTree = "<group>"; };
+		0Z0000000000000000000F15 /* 7-Zip LGPL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "7-Zip LGPL.txt"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		0Z0000000000000000000A01 /* OpenZip */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = OpenZip;
+			sourceTree = "<group>";
+		};
+		0Z0000000000000000000A02 /* OpenZipFinder */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = OpenZipFinder;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		0Z0000000000000000000E02 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0Z0000000000000000000B01 /* OpenZipKit in Frameworks */,
+				0Z0000000000000000000B02 /* Sparkle in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0Z0000000000000000000E12 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0Z0000000000000000000101 = {
+			isa = PBXGroup;
+			children = (
+				0Z0000000000000000000A01 /* OpenZip */,
+				0Z0000000000000000000A02 /* OpenZipFinder */,
+				0Z0000000000000000000103 /* Config */,
+				0Z0000000000000000000104 /* 7zz */,
+				0Z0000000000000000000102 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		0Z0000000000000000000102 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				0Z0000000000000000000F01 /* OpenZip.app */,
+				0Z0000000000000000000F02 /* OpenZipFinder.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		0Z0000000000000000000103 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				0Z0000000000000000000F03 /* Base.xcconfig */,
+				0Z0000000000000000000F04 /* Debug.xcconfig */,
+				0Z0000000000000000000F05 /* Release.xcconfig */,
+				0Z0000000000000000000F06 /* Version.xcconfig */,
+				0Z0000000000000000000F07 /* App.xcconfig */,
+				0Z0000000000000000000F08 /* FinderExtension.xcconfig */,
+				0Z0000000000000000000F09 /* Info.plist */,
+				0Z0000000000000000000F10 /* FinderExtension-Info.plist */,
+				0Z0000000000000000000F11 /* FinderExtension.entitlements */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		0Z0000000000000000000104 /* 7zz */ = {
+			isa = PBXGroup;
+			children = (
+				0Z0000000000000000000F12 /* 7zz */,
+				0Z0000000000000000000F13 /* 7-Zip License.txt */,
+				0Z0000000000000000000F14 /* 7-Zip unRAR License.txt */,
+				0Z0000000000000000000F15 /* 7-Zip LGPL.txt */,
+			);
+			name = "7-Zip (built by scripts/build-7zz.sh)";
+			path = Vendor/7zz;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0Z0000000000000000000201 /* OpenZip */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0Z0000000000000000000302 /* Build configuration list for PBXNativeTarget "OpenZip" */;
+			buildPhases = (
+				0Z0000000000000000000E00 /* Build 7-Zip */,
+				0Z0000000000000000000E01 /* Sources */,
+				0Z0000000000000000000E02 /* Frameworks */,
+				0Z0000000000000000000E03 /* Resources */,
+				0Z0000000000000000000E05 /* Copy Helpers */,
+				0Z0000000000000000000E04 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				0Z0000000000000000000602 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				0Z0000000000000000000A01 /* OpenZip */,
+			);
+			name = OpenZip;
+			packageProductDependencies = (
+				0Z0000000000000000000D01 /* OpenZipKit */,
+				0Z0000000000000000000D02 /* Sparkle */,
+			);
+			productName = OpenZip;
+			productReference = 0Z0000000000000000000F01 /* OpenZip.app */;
+			productType = "com.apple.product-type.application";
+		};
+		0Z0000000000000000000202 /* OpenZipFinder */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0Z0000000000000000000303 /* Build configuration list for PBXNativeTarget "OpenZipFinder" */;
+			buildPhases = (
+				0Z0000000000000000000E11 /* Sources */,
+				0Z0000000000000000000E12 /* Frameworks */,
+				0Z0000000000000000000E13 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				0Z0000000000000000000A02 /* OpenZipFinder */,
+			);
+			name = OpenZipFinder;
+			packageProductDependencies = (
+			);
+			productName = OpenZipFinder;
+			productReference = 0Z0000000000000000000F02 /* OpenZipFinder.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		0Z0000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2720;
+				LastUpgradeCheck = 2720;
+				TargetAttributes = {
+					0Z0000000000000000000201 = {
+						CreatedOnToolsVersion = 27.2;
+					};
+					0Z0000000000000000000202 = {
+						CreatedOnToolsVersion = 27.2;
+					};
+				};
+			};
+			buildConfigurationList = 0Z0000000000000000000301 /* Build configuration list for PBXProject "OpenZip" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 0Z0000000000000000000101;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				0Z0000000000000000000C01 /* XCLocalSwiftPackageReference "Packages/OpenZipKit" */,
+				0Z0000000000000000000C02 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 0Z0000000000000000000102 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				0Z0000000000000000000201 /* OpenZip */,
+				0Z0000000000000000000202 /* OpenZipFinder */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		0Z0000000000000000000E03 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0Z0000000000000000000B05 /* 7-Zip License.txt in Resources */,
+				0Z0000000000000000000B06 /* 7-Zip unRAR License.txt in Resources */,
+				0Z0000000000000000000B07 /* 7-Zip LGPL.txt in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0Z0000000000000000000E13 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		0Z0000000000000000000E00 /* Build 7-Zip */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/scripts/build-7zz.sh",
+			);
+			name = "Build 7-Zip";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/Vendor/7zz/7zz",
+				"$(SRCROOT)/Vendor/7zz/7-Zip License.txt",
+				"$(SRCROOT)/Vendor/7zz/7-Zip unRAR License.txt",
+				"$(SRCROOT)/Vendor/7zz/7-Zip LGPL.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Builds 7zz, which does the reading and writing of archives, from 7-Zip's source.\n# It does nothing once Vendor/7zz holds the version the script names.\n\"$SRCROOT/scripts/build-7zz.sh\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		0Z0000000000000000000E01 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0Z0000000000000000000E11 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		0Z0000000000000000000602 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0Z0000000000000000000202 /* OpenZipFinder */;
+			targetProxy = 0Z0000000000000000000601 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0Z0000000000000000000401 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0Z0000000000000000000F04 /* Debug.xcconfig */;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		0Z0000000000000000000402 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0Z0000000000000000000F05 /* Release.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		0Z0000000000000000000403 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0Z0000000000000000000F07 /* App.xcconfig */;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		0Z0000000000000000000404 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0Z0000000000000000000F07 /* App.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		0Z0000000000000000000405 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0Z0000000000000000000F08 /* FinderExtension.xcconfig */;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		0Z0000000000000000000406 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0Z0000000000000000000F08 /* FinderExtension.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0Z0000000000000000000301 /* Build configuration list for PBXProject "OpenZip" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0Z0000000000000000000401 /* Debug */,
+				0Z0000000000000000000402 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		0Z0000000000000000000302 /* Build configuration list for PBXNativeTarget "OpenZip" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0Z0000000000000000000403 /* Debug */,
+				0Z0000000000000000000404 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		0Z0000000000000000000303 /* Build configuration list for PBXNativeTarget "OpenZipFinder" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0Z0000000000000000000405 /* Debug */,
+				0Z0000000000000000000406 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		0Z0000000000000000000C01 /* XCLocalSwiftPackageReference "Packages/OpenZipKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/OpenZipKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		0Z0000000000000000000C02 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.10.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		0Z0000000000000000000D01 /* OpenZipKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = OpenZipKit;
+		};
+		0Z0000000000000000000D02 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0Z0000000000000000000C02 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 0Z0000000000000000000001 /* Project object */;
+}

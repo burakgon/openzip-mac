@@ -1,0 +1,12 @@
+// The Finder extension: the "OpenZip" entries in the Finder's context menu.
+PRODUCT_NAME = OpenZipFinder
+PRODUCT_BUNDLE_IDENTIFIER = com.burakgon.OpenZip.FinderSync
+INFOPLIST_FILE = Config/FinderExtension-Info.plist
+CODE_SIGN_ENTITLEMENTS = Config/FinderExtension.entitlements
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks
+SKIP_INSTALL = YES
+
+// macOS only loads extensions that are sandboxed. This one needs nothing beyond that: it
+// hands the paths of the selected files to the app and does no work itself.
+ENABLE_APP_SANDBOX = YES
+ENABLE_USER_SCRIPT_SANDBOXING = YES

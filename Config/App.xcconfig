@@ -1,0 +1,15 @@
+// The app itself.
+PRODUCT_NAME = OpenZip
+PRODUCT_BUNDLE_IDENTIFIER = com.burakgon.OpenZip
+INFOPLIST_FILE = Config/Info.plist
+ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
+ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/../Frameworks
+
+// Not sandboxed: an archiver extracts next to the archive and packs what it is handed,
+// wherever that is, and it runs the rar the user installed. It is hardened and notarized.
+ENABLE_APP_SANDBOX = NO
+
+// The first build runs scripts/build-7zz.sh, which downloads the source of 7-Zip and
+// compiles it. That is more than a sandboxed build script may do.
+ENABLE_USER_SCRIPT_SANDBOXING = NO
