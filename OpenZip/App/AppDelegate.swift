@@ -18,9 +18,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.servicesProvider = self
         NSUpdateDynamicServices()
         Demo.launch()
-        // Files to open arrive around this moment. If none did, and no window came back
-        // from the last session, the app was simply started: say hello.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [self] in
+        // Requests to open something arrive before this point. If none did, the app was
+        // started for its own sake: say hello, unless a window came back from the last
+        // session. A moment is left for requests that are slower, such as a service.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [self] in
             guard !wasAskedToOpen, !Self.hasVisibleWindows else { return }
             AppModel.shared.open(.welcome)
         }

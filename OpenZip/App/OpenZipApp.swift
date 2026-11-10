@@ -29,6 +29,9 @@ struct OpenZipApp: App {
         .defaultPosition(.center)
         .defaultLaunchBehavior(.suppressed)
         .restorationBehavior(.disabled)
+        // Not for files and links either: SwiftUI would show the first scene, this one,
+        // for every openzip: link the Finder extension sends.
+        .handlesExternalEvents(matching: [])
         .commands { AppCommands() }
         // Everything that wants a window puts its wish into the model; here is the one
         // place that may grant it.
