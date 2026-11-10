@@ -34,8 +34,9 @@ enum RarInstaller {
         request.setValue("Mozilla/5.0 (Macintosh)", forHTTPHeaderField: "User-Agent")
         let (data, _) = try await URLSession.shared.data(for: request)
         let html = String(decoding: data, as: UTF8.self)
+        // RARLAB has called Apple silicon both "arm" and "arm64".
         #if arch(arm64)
-        let architecture = "arm"
+        let architecture = "(?:arm64|arm)"
         #else
         let architecture = "x64"
         #endif
