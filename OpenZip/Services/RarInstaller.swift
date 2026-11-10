@@ -8,11 +8,6 @@ import OpenZipKit
 /// from rarlab.com, unpack it, and use the `rar` in it. It is RARLAB's trial version, free
 /// to try for 40 days, and the settings say so.
 enum RarInstaller {
-    struct Release {
-        var version: String
-        var url: URL
-    }
-
     enum Failure: LocalizedError {
         case notFound
         case badPackage
@@ -27,41 +22,30 @@ enum RarInstaller {
 
     private static let page = URL(string: "https://www.rarlab.com/download.htm")!
 
-    /// The newest released RAR for this Mac's processor, as the download page lists it.
-    static func latest() async throws -> Release {
-        var request = URLRequest(url: page)
-        // A plain browser-like name: the page is not served to everything.
-        request.setValue("Mozilla/5.0 (Macintosh)", forHTTPHeaderField: "User-Agent")
-        let (data, _) = try await URLSession.shared.data(for: request)
-        let html = String(decoding: data, as: UTF8.self)
-        // RARLAB has called Apple silicon both "arm" and "arm64".
-        #if arch(arm64)
-        let architecture = "(?:arm64|arm)"
-        #else
-        let architecture = "x64"
-        #endif
-        // "/rar/rarmacos-arm-723.tar.gz". Betas have letters in the number and do not match.
-        let pattern = try NSRegularExpression(pattern: "/rar/rarmacos-\(architecture)-(\\d+)\\.tar\\.gz")
-        let matches = pattern.matches(in: html, range: NSRange(html.startIndex..., in: html))
-        let versions = matches.compactMap { match -> (Int, String)? in
-            guard let whole = Range(match.range, in: html), let number = Range(match.range(at: 1), in: html), let value = Int(html[number]) else { return nil }
-            return (value, String(html[whole]))
+    /// Downloads the newest released RAR for this Mac and unpacks it into OpenZip's folder
+    /// in Application Support. Returns where the program is.
+    static func install() async throws -> URL {
+        let (data, _) = try await URLSession.shared.data(for: request(page))
+        let packages = RarPackages.packages(listedIn: String(decoding: data, as: UTF8.self), for: .current)
+        // The newest that is there and is what it should be. For an Intel Mac the first
+        // may be neither: see RarPackages. Anything else that goes wrong, the network
+        // for one, ends the attempt.
+        var failure = Failure.notFound
+        for package in packages {
+            guard let url = URL(string: package.path, relativeTo: page) else { continue }
+            do {
+                return try await install(from: url.absoluteURL)
+            } catch let error as Failure {
+                failure = error
+            }
         }
-        guard let newest = versions.max(by: { $0.0 < $1.0 }), let url = URL(string: newest.1, relativeTo: page) else {
-            throw Failure.notFound
-        }
-        let digits = String(newest.0)
-        return Release(version: "\(digits.dropLast(2)).\(digits.suffix(2))", url: url.absoluteURL)
+        throw failure
     }
 
-    /// Downloads and unpacks RAR into OpenZip's folder in Application Support. Returns
-    /// where the program is.
-    static func install() async throws -> URL {
-        let release = try await latest()
-        var request = URLRequest(url: release.url)
-        request.setValue("Mozilla/5.0 (Macintosh)", forHTTPHeaderField: "User-Agent")
-        let (file, _) = try await URLSession.shared.download(for: request)
+    private static func install(from url: URL) async throws -> URL {
+        let (file, response) = try await URLSession.shared.download(for: request(url))
         defer { try? FileManager.default.removeItem(at: file) }
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw Failure.notFound }
 
         let work = try WorkDirectory.makeTemporary()
         defer { work.remove() }
@@ -76,6 +60,13 @@ enum RarInstaller {
         try? FileManager.default.removeItem(at: folder)
         try FileManager.default.moveItem(at: unpacked, to: folder)
         return folder.appending(path: "rar")
+    }
+
+    private static func request(_ url: URL) -> URLRequest {
+        var request = URLRequest(url: url)
+        // A plain browser-like name: the site is not served to everything.
+        request.setValue("Mozilla/5.0 (Macintosh)", forHTTPHeaderField: "User-Agent")
+        return request
     }
 
     static func remove() {

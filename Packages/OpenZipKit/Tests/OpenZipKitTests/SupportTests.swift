@@ -201,3 +201,65 @@ struct TreeTests {
         #expect(elapsed < .seconds(2))
     }
 }
+
+@Suite("RARLAB's packages")
+struct RarPackagesTests {
+    /// The links of RARLAB's download page in November 2026: 7.23 is out, 7.30 is a beta,
+    /// Apple silicon is changing its name and Intel Macs are no longer on the page.
+    private let page = """
+        <td><a href="/rar/rarlinux-x64-730b2.tar.gz">RAR for Linux x64 7.30 beta 2</a></td>
+        <td><a href="/rar/rarmacos-arm64-730b2.tar.gz">RAR for macOS ARM64 7.30 beta 2</a></td>
+        <td><a href="/rar/rarlinux-x64-723.tar.gz">RAR for Linux x64 7.23</a></td>
+        <td><a href="/rar/rarbsd-x64-723.tar.gz">RAR for FreeBSD x64 7.23</a></td>
+        <td><a href="/rar/rarmacos-arm-723.tar.gz">RAR for macOS ARM64 7.23</a></td>
+        """
+
+    @Test func findsTheReleaseForAppleSiliconAndLeavesTheBeta() {
+        #expect(RarPackages.packages(listedIn: page, for: .appleSilicon) == [
+            .init(version: "7.23", path: "/rar/rarmacos-arm-723.tar.gz"),
+        ])
+    }
+
+    @Test func knowsAppleSiliconByItsNewNameToo() {
+        let later = page.replacingOccurrences(of: "730b2", with: "730")
+        #expect(RarPackages.packages(listedIn: later, for: .appleSilicon) == [
+            .init(version: "7.30", path: "/rar/rarmacos-arm64-730.tar.gz"),
+            .init(version: "7.23", path: "/rar/rarmacos-arm-723.tar.gz"),
+        ])
+    }
+
+    @Test func offersAnIntelMacWhatIsNotOnThePage() {
+        // The package of the version that is listed, under the name it has on the server.
+        #expect(RarPackages.packages(listedIn: page, for: .intel) == [
+            .init(version: "7.23", path: "/rar/rarmacos-x64-723.tar.gz"),
+        ])
+        // A later version may not exist for Intel: the last that does comes after it.
+        let later = page.replacingOccurrences(of: "730b2", with: "730")
+        #expect(RarPackages.packages(listedIn: later, for: .intel).map(\.path) == [
+            "/rar/rarmacos-x64-730.tar.gz", "/rar/rarmacos-x64-723.tar.gz",
+        ])
+        // And a page that says nothing at all still leads to that one.
+        #expect(RarPackages.packages(listedIn: "", for: .intel).map(\.version) == ["7.23"])
+        #expect(RarPackages.packages(listedIn: "", for: .appleSilicon).isEmpty)
+    }
+
+    @Test func takesAnIntelPackageThatIsListed() {
+        let earlier = """
+            <a href="/rar/rarmacos-x64-712.tar.gz">RAR for macOS x64 7.12</a>
+            <a href="/rar/rarmacos-arm-712.tar.gz">RAR for macOS ARM 7.12</a>
+            """
+        #expect(RarPackages.packages(listedIn: earlier, for: .intel) == [
+            .init(version: "7.23", path: "/rar/rarmacos-x64-723.tar.gz"),
+            .init(version: "7.12", path: "/rar/rarmacos-x64-712.tar.gz"),
+        ])
+        #expect(RarPackages.packages(listedIn: earlier, for: .appleSilicon) == [
+            .init(version: "7.12", path: "/rar/rarmacos-arm-712.tar.gz"),
+        ])
+    }
+
+    @Test func writesVersionsTheWayRarlabDoes() {
+        #expect(RarPackages.version(from: 723) == "7.23")
+        #expect(RarPackages.version(from: 700) == "7.00")
+        #expect(RarPackages.version(from: 1005) == "10.05")
+    }
+}
