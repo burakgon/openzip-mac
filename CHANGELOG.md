@@ -2,6 +2,12 @@
 
 Notable changes to OpenZip, newest first. Versions follow [semantic versioning](https://semver.org).
 
+## 1.0.1
+
+- **Quiet in the Finder.** “Extract Here” and the other commands in the Finder’s menu no longer bring up the welcome window next to their work, and OpenZip leaves again when the work is done.
+- **RAR keeps installing.** RARLAB has renamed its package for Apple silicon and taken the one for Intel Macs off its page. The download in the settings finds both: for an Intel Mac that is RAR 7.23, the last one made for it.
+- **Windows that fit.** The New Archive window opens as tall as its form and stays on the screen when it grows, instead of slipping behind the Dock. Each pane of the settings has the height it needs, and the welcome window shows its recent archives without cutting off the last. None of them scrolls anymore.
+
 ## 1.0.0
 
 The first release.
