@@ -9,7 +9,10 @@ struct WelcomeView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // What is above the list keeps its own height, whatever is left for the rest:
+            // a stack would otherwise cut a line of text to even things out.
             header
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 34)
                 .padding(.bottom, 26)
 
@@ -26,12 +29,13 @@ struct WelcomeView: View {
                     }
                 }
             }
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 28)
 
             recentList
                 .padding(.top, 22)
         }
-        .frame(width: 620, height: 560)
+        .frame(width: 620, height: height)
         .background {
             // What is behind the window shows through, tinted where a drop would land.
             Rectangle()
@@ -81,21 +85,31 @@ struct WelcomeView: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 36)
-                ScrollView {
-                    LazyVStack(spacing: 2) {
-                        ForEach(recents, id: \.self) { url in
-                            RecentRow(url: url)
-                        }
+                VStack(spacing: Self.rowSpacing) {
+                    ForEach(recents, id: \.self) { url in
+                        RecentRow(url: url)
+                            .frame(height: Self.rowHeight)
                     }
-                    .padding(.horizontal, 22)
-                    .padding(.bottom, 18)
                 }
+                .padding(.horizontal, 22)
             }
+            Spacer(minLength: 0)
         }
     }
 
+    // The latest few are all in view, with nothing to scroll: the window is as tall as
+    // they need. The rest are in the File menu, under Open Recent.
+    private static let mostRecents = 5
+    private static let rowHeight: CGFloat = 42
+    private static let rowSpacing: CGFloat = 2
+
+    /// Three recent archives fit under the cards; each one more makes the window taller.
+    private var height: CGFloat {
+        560 + CGFloat(max(0, recents.count - 3)) * (Self.rowHeight + Self.rowSpacing)
+    }
+
     private func refresh() {
-        recents = Array(AppModel.shared.recentArchives.prefix(12))
+        recents = Array(AppModel.shared.recentArchives.prefix(Self.mostRecents))
     }
 }
 
@@ -147,7 +161,7 @@ private struct RecentRow: View {
             AppModel.shared.openArchive(url)
         } label: {
             HStack(spacing: 10) {
-                Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
+                Image(nsImage: icon)
                     .resizable()
                     .frame(width: 28, height: 28)
                 VStack(alignment: .leading, spacing: 1) {
@@ -174,6 +188,13 @@ private struct RecentRow: View {
             Button("Extract Here") { QuickActions.extract([url], mode: .here) }
             Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
         }
+    }
+
+    /// The file's own icon, or that of its kind when the file is not there to be asked.
+    private var icon: NSImage {
+        FileManager.default.fileExists(atPath: url.path)
+            ? NSWorkspace.shared.icon(forFile: url.path)
+            : FileIcons.icon(for: url.lastPathComponent, isDirectory: false)
     }
 }
 
