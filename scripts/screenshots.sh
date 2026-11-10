@@ -114,8 +114,10 @@ shot() {
     stop
     sleep 0.4
     # The pictures are for everybody: numbers and dates as the United States writes them,
-    # whatever the Mac that takes them is set to.
-    open -n -a "$APP" --args --demo --locale en_US -ApplePersistenceIgnoreState YES "$@"
+    # and scroll bars that show only while scrolling, as on a Mac with a trackpad,
+    # whatever the Mac that takes them is set to or has plugged in.
+    open -n -a "$APP" --args --demo --locale en_US -ApplePersistenceIgnoreState YES \
+        -AppleShowScrollBars WhenScrolling "$@"
     sleep "$seconds"
     local pid id
     pid=$(ours | head -1)
