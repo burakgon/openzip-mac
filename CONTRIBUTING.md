@@ -76,5 +76,6 @@ For maintainers: set the version in `Config/Version.xcconfig`, add a section for
 describes the credentials it uses. Pushing a `v1.2.3` tag instead lets the Release workflow do the
 same on GitHub, once `scripts/add-release-secrets.sh` has stored its secrets.
 
-A new version of 7-Zip is two lines in `scripts/build-7zz.sh`: its number and the SHA-256 of its
-source archive.
+A new version of 7-Zip is three lines in `scripts/build-7zz.sh`: its number, the SHA-256 of its
+source archive, and the SHA-256 of its package for Windows, from which the program in front of
+self-extracting archives is taken.

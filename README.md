@@ -81,6 +81,9 @@ archive opens in a window of its own.
 - **Add** by dropping files into the window, onto a folder in it, or with <kbd>⌥</kbd><kbd>⌘</kbd><kbd>A</kbd>.
 - **Delete**, **rename** in place with <kbd>Return</kbd>, **move** by dragging onto a folder, make a **new folder**.
 - **Drag out** to the Finder or any app. Only what you drag is extracted.
+- **Copy and paste**: <kbd>⌘</kbd><kbd>C</kbd> puts what is selected on the clipboard, for the
+  Finder or for another archive, and <kbd>⌘</kbd><kbd>V</kbd> pastes files into the folder you
+  are looking at.
 - **Update modes**, as in WinRAR: add and replace, add and update, freshen, synchronize.
 - Edit the **comment** of a ZIP or RAR archive.
 
@@ -98,6 +101,10 @@ with [RARLAB's RAR](#what-about-rar).
   dictionary size, solid archives, the number of cores.
 - **AES-256 passwords**, and for 7z and RAR **hidden file names**: without the password the
   archive shows nothing at all.
+- **Passwords in your keychain**, if you say so where you type one: OpenZip tries the ones it
+  remembers before it asks, and offers them for a new archive.
+- **Archives that extract themselves**: a 7z becomes an `.exe` that opens on any Windows PC
+  without extra software, and that a Mac still opens as the archive it is.
 - **Split into volumes**: for email, FAT32, DVDs, or any size you type.
 - **Leave out what the Finder litters**: no `.DS_Store`, no `__MACOSX`, no `._` files in what you
   send to Windows. Plus your own patterns: `node_modules`, `*.tmp`.
@@ -107,6 +114,10 @@ with [RARLAB's RAR](#what-about-rar).
 - **Convert** any archive OpenZip opens into any format it writes.
 
 <br clear="right">
+
+And around that: **Export File List** writes everything in an archive, with sizes, dates and
+checksums, as CSV for a spreadsheet or as text to read. **Benchmark** runs 7-Zip's own test and
+says how fast your Mac packs and unpacks.
 
 ### Extract carefully
 
@@ -147,6 +158,7 @@ RAR 7.23, the last one RARLAB made for it). With it you get everything RAR is kn
 
 - solid archives and RAR's own compression,
 - **recovery records**, with which a damaged archive repairs itself,
+- **recovery volumes** for an archive in volumes: lose a volume, and it is made again,
 - **repair**, **lock against changes**, comments, volumes, self-extracting archives.
 
 ## Formats
@@ -211,9 +223,12 @@ An archive is somebody else's data, often from the internet. OpenZip treats it t
 - **Nothing half-done.** Files appear at the destination when the extraction is complete, and an
   archive being changed is replaced only when its new version is written.
 - **Passwords are not arguments.** They are handed to 7-Zip through a pipe, where other programs
-  on your Mac cannot see them, and are kept in memory only while the app runs.
+  on your Mac cannot see them, and are kept in memory only while the app runs. One that you ask
+  to be remembered is kept in your keychain, and nowhere else.
 - **The engine is built from source.** The build downloads 7-Zip's source from its own repository,
-  checks its SHA-256 and compiles it. Nothing is taken on trust.
+  checks its SHA-256 and compiles it. The one thing a Mac cannot build, the small Windows program
+  in front of an archive that extracts itself, is taken from 7-Zip's own package for Windows and
+  checked the same way. Nothing is taken on trust.
 - **Signed twice.** Releases are signed with a Developer ID and notarized by Apple; updates are
   additionally signed with the project's own key, and [Sparkle](https://sparkle-project.org)
   refuses anything else.
@@ -253,8 +268,9 @@ The interface is built on Liquid Glass, which arrived with macOS 26. Supporting 
 would mean a second interface.
 
 **How do I uninstall it?**<br>
-Move it to the Trash. Its settings are in `~/Library/Preferences/com.burakgon.OpenZip.plist`, and
-a RAR it downloaded in `~/Library/Application Support/OpenZip`.
+Move it to the Trash. Its settings are in `~/Library/Preferences/com.burakgon.OpenZip.plist`, a
+RAR it downloaded is in `~/Library/Application Support/OpenZip`, and the passwords it remembered
+are in Keychain Access under “OpenZip Archive Passwords”.
 
 ## Build it yourself
 

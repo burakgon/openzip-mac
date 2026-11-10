@@ -2,6 +2,18 @@
 
 Notable changes to OpenZip, newest first. Versions follow [semantic versioning](https://semver.org).
 
+## 1.1.0
+
+What WinRAR does and OpenZip did not do yet.
+
+- **Copy and paste.** ⌘C puts what is selected in an archive on the clipboard, to be pasted in the Finder or in another archive, and ⌘V pastes files into the folder a window shows.
+- **Passwords in the keychain.** A password is remembered if you say so where you type it. OpenZip tries what it remembers before it asks, and offers it for a new archive. Settings → Passwords lists them and forgets them.
+- **Archives that extract themselves on Windows.** A 7z archive can be made an .exe that opens there without extra software.
+- **Recovery volumes** for RAR archives in volumes, and Rebuild Missing Volumes, which makes a lost volume again.
+- **Export File List** writes everything in an archive, with sizes, dates and checksums, as CSV or as text.
+- **Benchmark** runs 7-Zip’s own test and says how fast this Mac compresses and decompresses.
+- The list of an archive takes the keyboard whenever its window opens. Arrow keys, Space and ⌘C used to wait for a click now and then.
+
 ## 1.0.1
 
 - **Quiet in the Finder.** “Extract Here” and the other commands in the Finder’s menu no longer bring up the welcome window next to their work, and OpenZip leaves again when the work is done.
