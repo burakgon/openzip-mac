@@ -510,6 +510,81 @@ final class ArchiveSession: Identifiable {
         return locations
     }
 
+    // MARK: The clipboard
+
+    /// How much Copy extracts without asking first.
+    private static let copiedWithoutAsking: UInt64 = 500_000_000
+
+    var canPaste: Bool { canEdit && FileClipboard.hasFiles }
+
+    /// Edit → Copy. The names of what is selected are on the clipboard at once. The files
+    /// themselves follow when they have been extracted to a temporary place, which is
+    /// where the clipboard can point to; a large selection is asked about first.
+    func copySelection(askingAboutSize: Bool = true) async {
+        let ids = selectedRoots
+        guard isReady, !ids.isEmpty else { return }
+        let stamp = FileClipboard.write(names: selectedRows.map { tree[$0].name })
+        // While the window is busy with something else, the names are all there is.
+        guard !isBusy else { return }
+        let size = ids.reduce(UInt64(0)) { $0.addingReportingOverflow(tree[$1].size).partialValue }
+        if askingAboutSize, size > Self.copiedWithoutAsking, !Self.confirmCopying(size) { return }
+
+        let folder: URL
+        do {
+            folder = try FileClipboard.makeFolder()
+        } catch {
+            report(error)
+            return
+        }
+        var job = ExtractionJob(archive: url, destination: folder, listing: listing)
+        job.items = ids.map { ExtractionJob.Item(path: tree[$0].path) }
+        job.conflictPolicy = .keepBoth
+        job.restoreMacMetadata = settings.restoreMacMetadata
+        job.keepQuarantine = settings.keepQuarantine
+        let prepared = job
+        do {
+            let result = try await perform("Copying \(Formatting.count(ids.count, "item"))") { engine, password, control, progress in
+                var job = prepared
+                job.password = password
+                return try await engine.extract(job, control: control, progress: progress)
+            }
+            // Something else may have been copied while this was at work: that stays.
+            guard FileClipboard.isUnchanged(since: stamp), !result.items.isEmpty else {
+                try? FileManager.default.removeItem(at: folder)
+                return
+            }
+            FileClipboard.write(files: result.items, in: folder)
+            if result.report.failures.isEmpty {
+                notice = Notice(kind: .success, text: "Copied \(Formatting.count(result.items.count, "item")). Paste in the Finder, or in another archive.")
+            } else {
+                notice = Notice(
+                    kind: .warning,
+                    text: "\(Formatting.count(result.report.failures.count, "file")) could not be copied",
+                    details: result.report.failures.map { "\($0.path) — \($0.reason)" }
+                )
+            }
+        } catch {
+            try? FileManager.default.removeItem(at: folder)
+            report(error)
+        }
+    }
+
+    private static func confirmCopying(_ size: UInt64) -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "Copy \(Formatting.bytes(size)) out of the archive?"
+        alert.informativeText = "What is copied is extracted to a temporary place first, and pasted from there. The names are on the clipboard already."
+        alert.addButton(withTitle: "Copy")
+        alert.addButton(withTitle: "Cancel")
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    /// Edit → Paste: the files on the clipboard go into the folder the window shows.
+    func pasteFiles() async {
+        let files = FileClipboard.files
+        guard canEdit, !files.isEmpty else { return }
+        await add(files, into: nil, options: nil, password: nil)
+    }
+
     // MARK: Changing
 
     func add(_ urls: [URL], into target: Int?, options: CompressionOptions?, password newPassword: String?) async {

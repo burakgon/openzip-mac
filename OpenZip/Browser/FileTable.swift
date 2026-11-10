@@ -53,7 +53,10 @@ struct FileTable: NSViewRepresentable {
         table.target = coordinator
         table.doubleAction = #selector(Coordinator.openClicked)
         table.onKey = { [weak coordinator] event in coordinator?.handleKey(event) ?? false }
-        table.selectedNames = { [session] in session.selectedRows.map { session.tree[$0].name } }
+        table.onMoveToWindow = { [weak coordinator] in coordinator?.takeFocus() }
+        table.onCopy = { [session] in Task { await session.copySelection() } }
+        table.onPaste = { [session] in Task { await session.pasteFiles() } }
+        table.canPaste = { [session] in session.canPaste }
         table.menu = NSMenu()
         table.menu?.delegate = coordinator
         table.headerView?.menu = coordinator.makeColumnsMenu(for: table)
@@ -211,16 +214,8 @@ struct FileTable: NSViewRepresentable {
                 isApplyingSelection = true
                 table.deselectAll(nil)
                 isApplyingSelection = false
-                if !didTakeFocus {
-                    // The list is what a new window is about: arrow keys, typing a name and
-                    // Space work at once, without a click to wake it.
-                    didTakeFocus = true
-                    DispatchQueue.main.async {
-                        guard let window = table.window, window.firstResponder === window || window.firstResponder == nil else { return }
-                        window.makeFirstResponder(table)
-                    }
-                }
             }
+            takeFocus()
             if selection != appliedSelection {
                 appliedSelection = selection
                 var indexes = IndexSet()
@@ -237,6 +232,23 @@ struct FileTable: NSViewRepresentable {
                 DispatchQueue.main.async { [self] in
                     session.renameRequest = nil
                     beginRenaming(id)
+                }
+            }
+        }
+
+        /// The list is what a new window is about: arrow keys, typing a name, Space and
+        /// Copy work at once, without a click to wake it. Called whenever the list is
+        /// brought up to date and when it arrives in its window, until it has worked
+        /// once: at the first of those moments the list is not in a window yet. If
+        /// something else has the focus by then, that keeps it.
+        func takeFocus() {
+            guard !didTakeFocus else { return }
+            DispatchQueue.main.async { [weak self] in
+                guard let self, !self.didTakeFocus, let table = self.table, let window = table.window else { return }
+                if window.firstResponder === window || window.firstResponder == nil {
+                    self.didTakeFocus = window.makeFirstResponder(table)
+                } else {
+                    self.didTakeFocus = true
                 }
             }
         }
@@ -405,7 +417,10 @@ struct FileTable: NSViewRepresentable {
                     session.requestDeletion(session.selectedRoots)
                 }
                 menu.addItem(.separator())
-                add(selected.count == 1 ? "Copy Name" : "Copy Names", "doc.on.doc") { [session] in
+                add("Copy", "doc.on.doc") { [session] in
+                    Task { await session.copySelection() }
+                }
+                add(selected.count == 1 ? "Copy Name" : "Copy Names", "textformat") { [session] in
                     Self.copy(selected.map { session.tree[$0].name })
                 }
                 add(selected.count == 1 ? "Copy Path" : "Copy Paths", "point.topleft.down.to.point.bottomright.curvepath") { [session] in
@@ -418,6 +433,9 @@ struct FileTable: NSViewRepresentable {
                 add("Select All", "checklist") { [session] in session.selectAll() }
             }
             menu.addItem(.separator())
+            add("Paste", "doc.on.clipboard", enabled: session.canPaste) { [session] in
+                Task { await session.pasteFiles() }
+            }
             add("New Folder", "folder.badge.plus", enabled: session.canEdit) { [session] in
                 session.sheet = .newFolder
             }
@@ -427,8 +445,7 @@ struct FileTable: NSViewRepresentable {
         }
 
         private static func copy(_ lines: [String]) {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(lines.joined(separator: "\n"), forType: .string)
+            FileClipboard.write(names: lines)
         }
 
         /// The menu of the header: which columns are shown.
@@ -611,24 +628,35 @@ nonisolated final class NodePromiseProvider: NSFilePromiseProvider {
 /// The table itself, which lets its coordinator have a go at the keys first.
 final class FileTableView: NSTableView {
     var onKey: ((NSEvent) -> Bool)?
-    /// The names of the selected rows, for Copy.
-    var selectedNames: (() -> [String])?
+    /// What Edit → Copy and Edit → Paste do. The table only knows that it was asked.
+    var onCopy: (() -> Void)?
+    var onPaste: (() -> Void)?
+    var canPaste: (() -> Bool)?
 
-    /// Edit → Copy: the names of what is selected, one per line.
     @objc func copy(_ sender: Any?) {
-        guard let names = selectedNames?(), !names.isEmpty else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(names.joined(separator: "\n"), forType: .string)
+        onCopy?()
+    }
+
+    @objc func paste(_ sender: Any?) {
+        onPaste?()
     }
 
     override func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
         if item.action == #selector(copy(_:)) { return selectedRow >= 0 }
+        if item.action == #selector(paste(_:)) { return canPaste?() ?? false }
         return super.validateUserInterfaceItem(item)
     }
 
     override func keyDown(with event: NSEvent) {
         if onKey?(event) == true { return }
         super.keyDown(with: event)
+    }
+
+    var onMoveToWindow: (() -> Void)?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window != nil { onMoveToWindow?() }
     }
 
     /// A right click on empty space is a click on the folder, not on the last selection.

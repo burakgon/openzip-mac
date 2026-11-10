@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.servicesProvider = self
         NSUpdateDynamicServices()
+        FileClipboard.removeLeftovers()
         Demo.launch()
         // Requests to open something arrive before this point. If none did, the app was
         // started for its own sake: say hello, unless a window came back from the last

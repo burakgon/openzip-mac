@@ -151,6 +151,20 @@ enum Demo {
             case "extractAsking":
                 let options = ExtractOptions(destination: URL(filePath: argument), folderChoice: .never, conflictPolicy: .ask, reveal: false)
                 Task { await session.extract(session.selection.isEmpty ? nil : session.selectedRoots, options: options) }
+            case "copy":
+                await session.copySelection(askingAboutSize: false)
+            case "paste":
+                await session.pasteFiles()
+            case "send":
+                // What a menu item does: an action sent to whoever has the focus.
+                let handled = NSApp.sendAction(Selector(argument + ":"), to: nil, from: nil)
+                let responder = NSApp.keyWindow?.firstResponder.map { String(describing: type(of: $0)) } ?? "none"
+                print("SENT \(argument): \(handled ? "taken" : "not taken"), the focus is on \(responder) in \(NSApp.keyWindow?.title ?? "no key window")")
+                try? await Task.sleep(for: .seconds(0.2))
+            case "clipboard":
+                // What is on the clipboard: its files, and what it pastes as text.
+                print("CLIPBOARD FILES: \(FileClipboard.files.map(\.path).joined(separator: "|"))")
+                print("CLIPBOARD TEXT: \((FileClipboard.pasteboard.pasteboardItems ?? []).compactMap { $0.string(forType: .string) }.joined(separator: "|"))")
             case "wait":
                 try? await Task.sleep(for: .seconds(Double(argument) ?? 1))
             case "quit":
