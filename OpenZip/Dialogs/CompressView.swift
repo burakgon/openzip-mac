@@ -157,11 +157,38 @@ final class CompressModel {
     }
 }
 
+/// Gives what is in it the height that asks for, up to a limit. Beyond the limit the
+/// content has to make do with it, which for a form means that it scrolls.
+private struct HeightUpTo: Layout {
+    var limit: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let content = subviews.first else { return .zero }
+        let width = proposal.width ?? content.sizeThatFits(.unspecified).width
+        let wanted = content.sizeThatFits(ProposedViewSize(width: width, height: nil)).height
+        // A point to spare: a form says a fraction of a point less than it then needs,
+        // and would show a scroll bar for that fraction.
+        return CGSize(width: width, height: min(wanted.rounded(.up) + 1, limit))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, proposal: ProposedViewSize(bounds.size))
+    }
+}
+
 /// The window that creates an archive: what WinRAR calls "Archive name and parameters".
 struct CompressView: View {
     let draftID: UUID?
     @State private var model: CompressModel?
     @Environment(\.dismiss) private var dismiss
+
+    init(draftID: UUID?) {
+        self.draftID = draftID
+        // Made now and not when the window appears: the window then has the size of the
+        // form from its first moment, and is put on the screen as what it is. Made later,
+        // it would start small in the middle of the screen and grow down out of it.
+        _model = State(initialValue: draftID.flatMap { AppModel.shared.drafts[$0] }.map { CompressModel(draft: $0) })
+    }
 
     var body: some View {
         Group {
@@ -174,22 +201,18 @@ struct CompressView: View {
             }
         }
         .onAppear {
-            guard model == nil, let draftID, let draft = AppModel.shared.drafts[draftID] else { return }
-            let created = CompressModel(draft: draft)
-            model = created
             // The demo can press Create itself: --to 7z --auto.
-            if Demo.isEnabled, Demo.arguments.contains("--auto") {
-                if let format = Demo.value("--to").flatMap(ArchiveFormat.init(rawValue:)) {
-                    created.options.format = format
-                    created.fit()
-                }
-                if let password = Demo.value("--new-password") {
-                    created.password = password
-                    created.verification = password
-                }
-                created.start()
-                dismiss()
+            guard let model, Demo.isEnabled, Demo.arguments.contains("--auto") else { return }
+            if let format = Demo.value("--to").flatMap(ArchiveFormat.init(rawValue:)) {
+                model.options.format = format
+                model.fit()
             }
+            if let password = Demo.value("--new-password") {
+                model.password = password
+                model.verification = password
+            }
+            model.start()
+            dismiss()
         }
         .onDisappear {
             if let draftID { AppModel.shared.drafts[draftID] = nil }
@@ -208,20 +231,25 @@ private struct CompressForm: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Form {
-                destinationSection
-                formatSection
-                if model.format.supportsPassword { passwordSection }
-                optionsSection
-                if model.format.supportsComment { commentSection }
+            // As tall as what is in it, so that nothing scrolls and the window fits its
+            // content, also when "More" opens. Only on a screen too small for all of it
+            // does the form keep to what the screen has, and scroll.
+            HeightUpTo(limit: Self.mostFormHeight) {
+                Form {
+                    destinationSection
+                    formatSection
+                    if model.format.supportsPassword { passwordSection }
+                    optionsSection
+                    if model.format.supportsComment { commentSection }
+                }
+                .formStyle(.grouped)
             }
-            .formStyle(.grouped)
 
             Divider()
             footer
         }
         .frame(width: 560)
-        .frame(minHeight: 640, idealHeight: 720, maxHeight: 940)
+        .background(KeepsWindowOnScreen())
         .navigationTitle(model.converting == nil ? "New Archive" : "Convert Archive")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -232,6 +260,12 @@ private struct CompressForm: View {
             await model.rescan()
         }
         .onChange(of: model.options.format) { model.fit() }
+        .task {
+            // The demo can open "More" a while after the window: --more-after 2.
+            guard Demo.isEnabled, let delay = Demo.value("--more-after").flatMap(Double.init) else { return }
+            try? await Task.sleep(for: .seconds(delay))
+            showsAdvanced = true
+        }
         .alert("Save These Settings as a Profile", isPresented: $savingProfile) {
             TextField("Name", text: $profileName)
             Button("Save") {
@@ -248,6 +282,14 @@ private struct CompressForm: View {
             model.sources.append(contentsOf: urls.filter { !model.sources.contains($0) })
             return true
         }
+    }
+
+    /// What the screen leaves for the form once the title bar, the buttons below it, the
+    /// menu bar and a Dock have had their share.
+    private static var mostFormHeight: CGFloat {
+        // The demo can pretend the screen is smaller: --screen-height 700.
+        let screen = Demo.value("--screen-height").flatMap(Double.init).map { CGFloat($0) } ?? NSScreen.main?.visibleFrame.height ?? 800
+        return max(360, screen - 190)
     }
 
     private struct ScanKey: Hashable {
