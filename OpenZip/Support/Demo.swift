@@ -72,6 +72,9 @@ enum Demo {
         if arguments.contains("--settings") {
             AppModel.shared.open(.settings)
         }
+        if arguments.contains("--benchmark") {
+            AppModel.shared.open(.benchmark)
+        }
         // For pictures the window has to be the one in front, whatever started the app.
         NSApp.perform(NSSelectorFromString("activateIgnoringOtherApps:"), with: true)
     }

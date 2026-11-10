@@ -6,6 +6,7 @@ enum WindowID {
     static let archive = "archive"
     static let compress = "compress"
     static let activity = "activity"
+    static let benchmark = "benchmark"
 }
 
 @main
@@ -69,6 +70,14 @@ struct OpenZipApp: App {
         .restorationBehavior(.disabled)
         .handlesExternalEvents(matching: [])
 
+        Window("Benchmark", id: WindowID.benchmark) {
+            BenchmarkView()
+                .environment(\.locale, Formatting.locale)
+        }
+        .windowResizability(.contentSize)
+        .restorationBehavior(.disabled)
+        .handlesExternalEvents(matching: [])
+
         Settings {
             SettingsView()
                 .environment(\.locale, Formatting.locale)
@@ -90,6 +99,8 @@ struct OpenZipApp: App {
             openWindow(id: WindowID.activity)
         case .settings:
             openSettings()
+        case .benchmark:
+            openWindow(id: WindowID.benchmark)
         }
     }
 }

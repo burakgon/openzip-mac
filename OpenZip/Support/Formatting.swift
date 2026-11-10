@@ -18,6 +18,11 @@ enum Formatting {
         "\(value.formatted(.number.locale(locale))) \(value == 1 ? singular : (plural ?? singular + "s"))"
     }
 
+    /// A whole number with the marks between its thousands.
+    static func number(_ value: UInt64) -> String {
+        value.formatted(.number.locale(locale))
+    }
+
     static func percent(_ fraction: Double) -> String {
         fraction.formatted(.percent.precision(.fractionLength(0)).locale(locale))
     }

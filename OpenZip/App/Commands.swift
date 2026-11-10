@@ -152,6 +152,8 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("r", modifiers: [.command, .option])
             .disabled(session == nil)
+            Divider()
+            Button("Benchmark…") { AppModel.shared.open(.benchmark) }
         }
 
         CommandGroup(replacing: .help) {

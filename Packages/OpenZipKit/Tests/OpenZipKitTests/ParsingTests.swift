@@ -325,3 +325,83 @@ struct ParsingTests {
         #expect(output.messages.isEmpty)
     }
 }
+
+@Suite("The benchmark")
+struct BenchmarkTests {
+    /// What `7zz b` printed on a Mac, shortened in the middle.
+    private let output = """
+
+        7-Zip (z) 26.06 (arm64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-11-06
+         64-bit arm_v:8.5-A locale=en_US.UTF-8 Threads:18 OPEN_MAX:1048576, ASM
+
+        Compiler:  CLANG 21.0.0 ver:Apple LLVM 21.0.0 (clang-2100.4.1.1) GCC 4.2.1 : CRYPTO SHA2 AES CRC32 UNALIGNED
+        Darwin : 27.2.0 : Darwin Kernel Version 27.2.0: Thu Oct 15 00:22:36 PDT 2026; root:xnu-13432.41.4~27/RELEASE_ARM64_T6050 : arm64
+        PageSize:16KB
+        Apple M5 Max 18C18T
+
+        1T CPU Freq (MHz):  4248  4255  4254  4285  4281  4169  4207
+        9T CPU Freq (MHz): 891% 4161   889% 4118
+
+        RAM size:   49152 MB,  # CPU hardware threads:  18
+        RAM usage:   4003 MB,  # Benchmark threads:     18
+
+                               Compressing  |                  Decompressing
+        Dict     Speed Usage    R/U Rating  |      Speed Usage    R/U Rating
+                 KiB/s     %   MIPS   MIPS  |      KiB/s     %   MIPS   MIPS
+
+        22:     131584  1573   8136 128006  |    1422650  1778   6821 121294
+        23:     124321  1601   7910 126669  |    1399001  1779   6803 121044
+        ----------------------------------  | ------------------------------
+        Avr:    127952  1587   8023 127337  |    1410825  1778   6812 121169
+        Tot:            1683   7418 124253
+
+        """
+
+    @Test func readsThePassesAndTheTotal() {
+        var parser = BenchmarkParser()
+        _ = parser.feed(Data(output.utf8))
+        let result = parser.result
+        #expect(result.processor == "Apple M5 Max 18C18T")
+        #expect(result.threads == 18)
+        #expect(result.passes.map(\.dictionaryBits) == [22, 23])
+        #expect(result.passes[0].compressing == .init(speed: 131_584, usage: 1_573, ratingPerCore: 8_136, rating: 128_006))
+        #expect(result.passes[1].decompressing == .init(speed: 1_399_001, usage: 1_779, ratingPerCore: 6_803, rating: 121_044))
+        #expect(result.average?.compressing.rating == 127_337)
+        #expect(result.totalUsage == 1_683)
+        #expect(result.totalRating == 124_253)
+        #expect(result.isComplete)
+    }
+
+    @Test func followsTheOutputAsItComes() {
+        var parser = BenchmarkParser()
+        var updates = 0
+        // In pieces that end in the middle of lines, the way a pipe delivers them.
+        let bytes = Array(output.utf8)
+        for start in stride(from: 0, to: bytes.count, by: 37) {
+            if parser.feed(Data(bytes[start..<min(start + 37, bytes.count)])) { updates += 1 }
+        }
+        #expect(parser.result.passes.count == 2)
+        #expect(parser.result.totalRating == 124_253)
+        #expect(updates >= 5)
+        #expect(!BenchmarkParser().result.isComplete)
+    }
+
+    @Test func measuresThisMac() async throws {
+        // A short one: the engine's own always runs the full set of passes.
+        var parser = BenchmarkParser()
+        let process = Process()
+        process.executableURL = Fixtures.sevenZip
+        process.arguments = ["b", "-mmt2", "-md18"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        try process.run()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        _ = parser.feed(data)
+        #expect(parser.result.isComplete)
+        #expect(parser.result.passes.map(\.dictionaryBits) == [18])
+        #expect((parser.result.totalRating ?? 0) > 100)
+        #expect(!parser.result.processor.isEmpty)
+    }
+}

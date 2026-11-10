@@ -9,6 +9,7 @@ enum WindowRequest: Hashable {
     case compress(UUID)
     case activity
     case settings
+    case benchmark
 }
 
 /// What a "New Archive" window starts with.
