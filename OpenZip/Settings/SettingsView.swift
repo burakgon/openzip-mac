@@ -18,6 +18,15 @@ struct SettingsView: View {
     }
 }
 
+private extension View {
+    /// A pane of the settings: grouped, and as tall as what is in it, so that the window
+    /// takes the height of each pane and none of them has to scroll.
+    func pane() -> some View {
+        formStyle(.grouped)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
 // MARK: General
 
 private struct GeneralPane: View {
@@ -48,7 +57,7 @@ private struct GeneralPane: View {
                 Toggle("Notify when an operation ends while OpenZip is in the background", isOn: $settings.notifiesWhenDone)
             }
         }
-        .formStyle(.grouped)
+        .pane()
     }
 }
 
@@ -80,7 +89,7 @@ private struct ExtractingPane: View {
                 Text("With the quarantine kept, an app that comes out of a downloaded archive is checked by Gatekeeper before it runs, as if it had been downloaded itself. Turning this off is not recommended.")
             }
         }
-        .formStyle(.grouped)
+        .pane()
     }
 }
 
@@ -151,7 +160,7 @@ private struct FinderPane: View {
                     .foregroundStyle(failure == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
             }
         }
-        .formStyle(.grouped)
+        .pane()
         .onAppear(perform: refresh)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in refresh() }
     }
@@ -246,7 +255,7 @@ private struct RarPane: View {
                      + (app.tools.rar != nil ? (isRegistered ? " A license key was found." : " No license key was found: this is the trial.") : ""))
             }
         }
-        .formStyle(.grouped)
+        .pane()
         .onAppear(perform: refresh)
     }
 
@@ -357,7 +366,7 @@ private struct AboutPane: View {
                 Text("OpenZip is not affiliated with RARLAB, win.rar GmbH or 7-Zip. WinRAR and RAR are trademarks of their owners.")
             }
         }
-        .formStyle(.grouped)
+        .pane()
         .onAppear {
             checksAutomatically = updater.automaticallyChecksForUpdates
             downloadsAutomatically = updater.automaticallyDownloadsUpdates
